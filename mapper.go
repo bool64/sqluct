@@ -61,7 +61,7 @@ func (sm *Mapper) Insert(q squirrel.InsertBuilder, val interface{}, options ...f
 	if v.Kind() == reflect.Slice {
 		for i := 0; i < v.Len(); i++ {
 			item := v.Index(i)
-			cols, vals := sm.getColumnsValues(item, options...)
+			cols, vals := sm.ColumnsValues(item, options...)
 
 			if i == 0 {
 				q = q.Columns(cols...)
@@ -70,7 +70,7 @@ func (sm *Mapper) Insert(q squirrel.InsertBuilder, val interface{}, options ...f
 			q = q.Values(vals...)
 		}
 	} else {
-		cols, vals := sm.getColumnsValues(v, options...)
+		cols, vals := sm.ColumnsValues(v, options...)
 		q = q.Columns(cols...)
 		q = q.Values(vals...)
 	}
@@ -84,7 +84,7 @@ func (sm *Mapper) Update(q squirrel.UpdateBuilder, val interface{}, options ...f
 		return q
 	}
 
-	cols, vals := sm.getColumnsValues(reflect.ValueOf(val), options...)
+	cols, vals := sm.ColumnsValues(reflect.ValueOf(val), options...)
 	for i, col := range cols {
 		q = q.Set(col, vals[i])
 	}
@@ -98,7 +98,7 @@ func (sm *Mapper) Select(q squirrel.SelectBuilder, columns interface{}, options 
 		return q
 	}
 
-	cols, _ := sm.getColumnsValues(reflect.ValueOf(columns), options...)
+	cols, _ := sm.ColumnsValues(reflect.ValueOf(columns), options...)
 	q = q.Columns(cols...)
 
 	return q
@@ -106,7 +106,7 @@ func (sm *Mapper) Select(q squirrel.SelectBuilder, columns interface{}, options 
 
 // WhereEq maps struct values as conditions to squirrel.Eq.
 func (sm *Mapper) WhereEq(conditions interface{}, options ...func(*Options)) squirrel.Eq {
-	columns, values := sm.getColumnsValues(reflect.ValueOf(conditions), options...)
+	columns, values := sm.ColumnsValues(reflect.ValueOf(conditions), options...)
 	eq := make(squirrel.Eq, len(columns))
 
 	for i, column := range columns {
@@ -124,7 +124,7 @@ func (sm *Mapper) WhereEq(conditions interface{}, options ...func(*Options)) squ
 //
 // Deprecated: use Col with DESC/ASC.
 func (sm *Mapper) Order(columns interface{}, options ...func(*Options)) string {
-	cols, _ := sm.getColumnsValues(reflect.ValueOf(columns), options...)
+	cols, _ := sm.ColumnsValues(reflect.ValueOf(columns), options...)
 	order := ""
 	orderDir := " ASC"
 
@@ -218,7 +218,8 @@ func isZero(colV reflect.Value, val interface{}) bool {
 	return false
 }
 
-func (sm *Mapper) getColumnsValues(v reflect.Value, options ...func(*Options)) ([]string, []interface{}) {
+// ColumnsValues extracts columns and values from provided struct value.
+func (sm *Mapper) ColumnsValues(v reflect.Value, options ...func(*Options)) ([]string, []interface{}) {
 	tm, o, skipValues := sm.colType(v, options...)
 	columns := make([]string, 0, len(tm.Index))
 	values := make([]interface{}, 0, len(tm.Index))
