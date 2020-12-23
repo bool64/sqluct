@@ -202,7 +202,7 @@ func (s *Storage) Select(ctx context.Context, qb ToSQL, dest interface{}) (err e
 
 // QueryBuilder returns query builder with placeholder format.
 func (s *Storage) QueryBuilder() squirrel.StatementBuilderType {
-	return squirrel.StatementBuilder.PlaceholderFormat(s.Format)
+	return squirrel.StatementBuilder.PlaceholderFormat(s.Format).RunWith(s.db)
 }
 
 // SelectStmt makes a select query builder.
