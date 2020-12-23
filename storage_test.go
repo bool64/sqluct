@@ -252,27 +252,36 @@ func TestStorage_ExecContext(t *testing.T) {
 }
 
 func TestStorage_DeleteStmt(t *testing.T) {
-	st := sqluct.Storage{
-		Format: squirrel.Dollar,
-	}
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
 
-	query, _, err := st.DeleteStmt("table").ToSql()
+	st := sqluct.NewStorage(sqlx.NewDb(db, "mock"))
+	st.Format = squirrel.Dollar
+
+	mock.ExpectExec("DELETE FROM table").
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	_, err = st.DeleteStmt("table").Exec()
 	assert.NoError(t, err)
-	assert.Equal(t, query, "DELETE FROM table")
+	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
 func TestStorage_InsertStmt(t *testing.T) {
-	st := sqluct.Storage{
-		Format: squirrel.Dollar,
-	}
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
 
-	query, args, err := st.InsertStmt("table", struct {
+	st := sqluct.NewStorage(sqlx.NewDb(db, "mock"))
+	st.Format = squirrel.Dollar
+
+	mock.ExpectExec("INSERT INTO table \\(order_id,amount\\) VALUES \\(\\$1,\\$2\\)").
+		WithArgs(10, 20).WillReturnResult(sqlmock.NewResult(1, 1))
+
+	_, err = st.InsertStmt("table", struct {
 		OrderID int `db:"order_id"`
 		Amount  int `db:"amount"`
-	}{10, 20}).ToSql()
+	}{10, 20}).Exec()
 	assert.NoError(t, err)
-	assert.Equal(t, query, "INSERT INTO table (order_id,amount) VALUES ($1,$2)")
-	assert.Equal(t, []interface{}{10, 20}, args)
+	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
 func TestStorage_UpdateStmt(t *testing.T) {
