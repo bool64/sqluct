@@ -42,6 +42,10 @@ type Storage struct {
 	// Other values are squirrel.Question, squirrel.AtP and squirrel.Colon.
 	Format squirrel.PlaceholderFormat
 
+	// IdentifierQuoter is formatter of column and table names.
+	// Default QuoteNoop.
+	IdentifierQuoter func(tableAndColumn ...string) string
+
 	// OnError is called when error is encountered, could be useful for logging.
 	OnError func(ctx context.Context, err error)
 
@@ -233,7 +237,20 @@ func (s *Storage) DeleteStmt(tableName string) squirrel.DeleteBuilder {
 
 // Col will try to find column name and will panic on error.
 func (s *Storage) Col(structPtr, fieldPtr interface{}) string {
-	return s.Mapper.Col(structPtr, fieldPtr)
+	col := s.Mapper.Col(structPtr, fieldPtr)
+	if s.IdentifierQuoter != nil {
+		col = s.IdentifierQuoter(col)
+	}
+
+	return col
+}
+
+// Ref creates Referencer for query builder.
+func (s *Storage) Ref() *Referencer {
+	return &Referencer{
+		Mapper:           s.Mapper,
+		IdentifierQuoter: s.IdentifierQuoter,
+	}
 }
 
 // WhereEq maps struct values as conditions to squirrel.Eq.
