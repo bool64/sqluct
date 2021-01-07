@@ -274,6 +274,30 @@ func (sm *Mapper) FindColumnName(structPtr, fieldPtr interface{}) (string, error
 	return "", errFieldNotFound
 }
 
+// FindColumnNames returns column names mapped by a pointer to a field.
+func (sm *Mapper) FindColumnNames(structPtr interface{}) (map[interface{}]string, error) {
+	if structPtr == nil {
+		return nil, errNilArgument
+	}
+
+	v := reflect.Indirect(reflect.ValueOf(structPtr))
+	t := v.Type()
+
+	if !v.CanAddr() {
+		return nil, errNotAPointer
+	}
+
+	res := make(map[interface{}]string)
+
+	tm := sm.reflectMapper().TypeMap(t)
+	for _, fi := range tm.Index {
+		fv := reflectx.FieldByIndexesReadOnly(v, fi.Index)
+		res[fv.Addr().Interface()] = fi.Name
+	}
+
+	return res, nil
+}
+
 // Col will try to find column name and will panic on error.
 func (sm *Mapper) Col(structPtr, fieldPtr interface{}) string {
 	name, err := sm.FindColumnName(structPtr, fieldPtr)

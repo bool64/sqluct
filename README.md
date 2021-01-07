@@ -11,7 +11,9 @@ This module integrates [`github.com/Masterminds/squirrel`](https://github.com/Ma
 and [`github.com/jmoiron/sqlx`](https://github.com/jmoiron/sqlx) to allow seamless operation based on field tags of row
 structure.
 
-## Example
+Field tags (`db` by default) act as a source of truth for column names to allow better maintainability and fewer errors.
+
+## Simple CRUD
 
 ```go
 var (
@@ -72,4 +74,58 @@ _, err = s.Exec(ctx, s.DeleteStmt(tableName).Where(Product{ID: 2}, sqluct.SkipZe
 if err != nil {
     log.Fatal(err)
 }
+```
+
+## Referencing Fields In Complex Statements
+
+```go
+type User struct {
+    ID        int    `db:"id"`
+    FirstName string `db:"first_name"`
+    LastName  string `db:"last_name"`
+}
+
+type DirectReport struct {
+    ManagerID  int `db:"manager_id"`
+    EmployeeID int `db:"employee_id"`
+}
+
+var s sqluct.Storage
+
+rf := s.Ref()
+
+// Add aliased tables as pointers to structs.
+manager := &User{}
+rf.AddTableAlias(manager, "manager")
+
+employee := &User{}
+rf.AddTableAlias(employee, "employee")
+
+dr := &DirectReport{}
+rf.AddTableAlias(dr, "dr")
+
+// Find direct reports that share same last name and manager is not named John.
+qb := squirrel.StatementBuilder.Select(rf.Fmt("%s, %s", &dr.ManagerID, &dr.EmployeeID)).
+    From(rf.Fmt("%s AS %s", rf.Q("users"), manager)). // Quote literal name and alias it with registered struct pointer.
+    InnerJoin(rf.Fmt("%s AS %s ON %s = %s AND %s = %s",
+        rf.Q("direct_reports"), dr,
+        &dr.ManagerID, &manager.ID, // Identifiers are resolved using row field pointers.
+        &dr.EmployeeID, &employee.ID)).
+    Where(rf.Fmt("%s = %s", &manager.LastName, &employee.LastName)).
+    Where(rf.Fmt("%s != ?", &manager.FirstName), "John") // Regular binds work same way as in standard squirrel.
+
+stmt, args, err := qb.ToSql()
+if err != nil {
+    log.Fatal(err)
+}
+
+fmt.Println(stmt)
+fmt.Println(args)
+
+// SELECT dr.manager_id, dr.employee_id 
+// FROM users AS manager 
+// INNER JOIN direct_reports AS dr ON dr.manager_id = manager.id AND dr.employee_id = employee.id 
+// WHERE manager.last_name = employee.last_name AND manager.first_name != ?
+//
+// [John]
 ```
