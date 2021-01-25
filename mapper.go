@@ -3,6 +3,7 @@ package sqluct
 import (
 	"errors"
 	"reflect"
+	"sync"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx/reflectx"
@@ -17,9 +18,15 @@ var (
 // Mapper prepares select, insert and update statements.
 type Mapper struct {
 	ReflectMapper *reflectx.Mapper
+
+	mu    sync.Mutex
+	types map[reflect.Type]*reflectx.StructMap
 }
 
-var reflectMapper = reflectx.NewMapper("db")
+var (
+	reflectMapper = reflectx.NewMapper("db")
+	defaultMapper = &Mapper{}
+)
 
 // SkipZeroValues instructs mapper to ignore fields with zero values.
 func SkipZeroValues(o *Options) {
@@ -170,7 +177,7 @@ func (sm *Mapper) colType(v reflect.Value, options ...func(*Options)) (*reflectx
 		panic("struct or slice/array of struct expected in sql query mapper")
 	}
 
-	tm := sm.reflectMapper().TypeMap(t)
+	tm := sm.typeMap(t)
 
 	return tm, o, skipValues
 }
@@ -263,7 +270,7 @@ func (sm *Mapper) FindColumnName(structPtr, fieldPtr interface{}) (string, error
 		return "", errNotAPointer
 	}
 
-	tm := sm.reflectMapper().TypeMap(t)
+	tm := sm.typeMap(t)
 	for _, fi := range tm.Index {
 		fv := reflectx.FieldByIndexesReadOnly(v, fi.Index)
 		if fv.Addr().Interface() == fieldPtr {
@@ -272,6 +279,56 @@ func (sm *Mapper) FindColumnName(structPtr, fieldPtr interface{}) (string, error
 	}
 
 	return "", errFieldNotFound
+}
+
+func (sm *Mapper) typeMap(t reflect.Type) *reflectx.StructMap {
+	if sm == nil {
+		sm = defaultMapper
+	}
+
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+
+	tm, found := sm.types[t]
+	if found {
+		return tm
+	}
+
+	tm = sm.reflectMapper().TypeMap(t)
+	index := make([]*reflectx.FieldInfo, 0, len(tm.Index))
+
+	for _, fi := range tm.Index {
+		skip := false
+		p := fi.Parent
+
+		// Field is allowed to be a column if does not have a named parent (with non-empty path)
+		// or all parents are embedded.
+		for p != nil && p.Path != "" {
+			if !p.Embedded {
+				skip = true
+
+				break
+			}
+
+			p = p.Parent
+		}
+
+		if skip {
+			continue
+		}
+
+		index = append(index, fi)
+	}
+
+	tm.Index = index
+
+	if sm.types == nil {
+		sm.types = make(map[reflect.Type]*reflectx.StructMap, 1)
+	}
+
+	sm.types[t] = tm
+
+	return tm
 }
 
 // FindColumnNames returns column names mapped by a pointer to a field.
@@ -289,7 +346,7 @@ func (sm *Mapper) FindColumnNames(structPtr interface{}) (map[interface{}]string
 
 	res := make(map[interface{}]string)
 
-	tm := sm.reflectMapper().TypeMap(t)
+	tm := sm.typeMap(t)
 	for _, fi := range tm.Index {
 		fv := reflectx.FieldByIndexesReadOnly(v, fi.Index)
 		res[fv.Addr().Interface()] = fi.Name
