@@ -5,7 +5,6 @@ github.com/Masterminds/squirrel v1.5.0/go.mod h1:NNaOrjSoIDfDA40n7sr2tPNZRfjzjA4
 github.com/bool64/ctxd v0.1.3 h1:n+aQ6UdoZXlltETFXqIhZR2DoMxhMYE2CW9BQn8aNBY=
 github.com/bool64/ctxd v0.1.3/go.mod h1:rhUkoNE4mKFSJmo9l+78u2j+FVQifRCj0MHRhyZ2GDA=
 github.com/bool64/dev v0.1.0/go.mod h1:pn52JC52uSgpazChx9CeXyG+S3sW2V36HHoLNBbscdg=
-github.com/bool64/dev v0.1.10 h1:4L6eLD+qo1QgWDy+Y7OhJxi/gLwOAuV1rd07noMc3dU=
 github.com/bool64/dev v0.1.10/go.mod h1:pn52JC52uSgpazChx9CeXyG+S3sW2V36HHoLNBbscdg=
 github.com/bool64/dev v0.1.12 h1:mbuWBtCtOGwqt2lN1/9oPmn70XaOHdv2YHzQ31Zf9ks=
 github.com/bool64/dev v0.1.12/go.mod h1:pn52JC52uSgpazChx9CeXyG+S3sW2V36HHoLNBbscdg=

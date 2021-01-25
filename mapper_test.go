@@ -11,22 +11,36 @@ import (
 
 type (
 	Sample struct {
-		A int `db:"a"`
+		A              int        `db:"a"`
+		DeeplyEmbedded            // Recursively embedded fields are used as root fields.
+		Meta           AnotherRow `db:"meta"` // Meta is a column, but its fields are not.
+	}
+
+	DeeplyEmbedded struct {
 		SampleEmbedded
+		E string `db:"e"`
 	}
 
 	SampleEmbedded struct {
 		B float64 `db:"b"`
 		C string  `db:"c"`
 	}
+
+	AnotherRow struct {
+		SampleEmbedded        // These embedded fields won't show up in Sample statements.
+		D              string `db:"d"` // This field won't show up in Sample statements.
+	}
 )
 
 func TestInsertValue(t *testing.T) {
 	z := Sample{
 		A: 1,
-		SampleEmbedded: SampleEmbedded{
-			B: 2.2,
-			C: "3",
+		DeeplyEmbedded: DeeplyEmbedded{
+			SampleEmbedded: SampleEmbedded{
+				B: 2.2,
+				C: "3",
+			},
+			E: "e!",
 		},
 	}
 
@@ -35,8 +49,8 @@ func TestInsertValue(t *testing.T) {
 	q := sm.Insert(ps.Insert("sample"), z)
 	query, args, err := q.ToSql()
 	assert.NoError(t, err)
-	assert.Equal(t, "INSERT INTO sample (a,b,c) VALUES ($1,$2,$3)", query)
-	assert.Equal(t, []interface{}{1, 2.2, "3"}, args)
+	assert.Equal(t, "INSERT INTO sample (a,meta,e,b,c) VALUES ($1,$2,$3,$4,$5)", query)
+	assert.Equal(t, []interface{}{1, AnotherRow{SampleEmbedded: SampleEmbedded{B: 0, C: ""}, D: ""}, "e!", 2.2, "3"}, args)
 }
 
 func TestMapper_Insert_nil(t *testing.T) {
@@ -61,16 +75,22 @@ func TestInsertValueSlice(t *testing.T) {
 	z := []Sample{
 		{
 			A: 1,
-			SampleEmbedded: SampleEmbedded{
-				B: 2.2,
-				C: "3",
+			DeeplyEmbedded: DeeplyEmbedded{
+				SampleEmbedded: SampleEmbedded{
+					B: 2.2,
+					C: "3",
+				},
+				E: "e!",
 			},
 		},
 		{
 			A: 4,
-			SampleEmbedded: SampleEmbedded{
-				B: 5.5,
-				C: "6",
+			DeeplyEmbedded: DeeplyEmbedded{
+				SampleEmbedded: SampleEmbedded{
+					B: 5.5,
+					C: "6",
+				},
+				E: "ee!",
 			},
 		},
 	}
@@ -82,24 +102,37 @@ func TestInsertValueSlice(t *testing.T) {
 	q = sm.Insert(q, z)
 	query, args, err := q.ToSql()
 	assert.NoError(t, err)
-	assert.Equal(t, "INSERT INTO sample (a,b,c) VALUES ($1,$2,$3),($4,$5,$6)", query)
-	assert.Equal(t, []interface{}{1, 2.2, "3", 4, 5.5, "6"}, args)
+	assert.Equal(t, "INSERT INTO sample (a,meta,e,b,c) VALUES ($1,$2,$3,$4,$5),($6,$7,$8,$9,$10)", query)
+	assert.Equal(t, []interface{}{
+		1,
+		AnotherRow{SampleEmbedded: SampleEmbedded{B: 0, C: ""}, D: ""},
+		"e!", 2.2, "3",
+		4,
+		AnotherRow{SampleEmbedded: SampleEmbedded{B: 0, C: ""}, D: ""},
+		"ee!", 5.5, "6",
+	}, args)
 }
 
 func TestInsertValueSlicePtr(t *testing.T) {
 	z := []Sample{
 		{
 			A: 1,
-			SampleEmbedded: SampleEmbedded{
-				B: 2.2,
-				C: "3",
+			DeeplyEmbedded: DeeplyEmbedded{
+				SampleEmbedded: SampleEmbedded{
+					B: 2.2,
+					C: "3",
+				},
+				E: "e!",
 			},
 		},
 		{
 			A: 4,
-			SampleEmbedded: SampleEmbedded{
-				B: 5.5,
-				C: "6",
+			DeeplyEmbedded: DeeplyEmbedded{
+				SampleEmbedded: SampleEmbedded{
+					B: 5.5,
+					C: "6",
+				},
+				E: "ee!",
 			},
 		},
 	}
@@ -109,8 +142,15 @@ func TestInsertValueSlicePtr(t *testing.T) {
 	q := sm.Insert(ps.Insert("sample"), z)
 	query, args, err := q.ToSql()
 	assert.NoError(t, err)
-	assert.Equal(t, "INSERT INTO sample (a,b,c) VALUES ($1,$2,$3),($4,$5,$6)", query)
-	assert.Equal(t, []interface{}{1, 2.2, "3", 4, 5.5, "6"}, args)
+	assert.Equal(t, "INSERT INTO sample (a,meta,e,b,c) VALUES ($1,$2,$3,$4,$5),($6,$7,$8,$9,$10)", query)
+	assert.Equal(t, []interface{}{
+		1,
+		AnotherRow{SampleEmbedded: SampleEmbedded{B: 0, C: ""}, D: ""},
+		"e!", 2.2, "3",
+		4,
+		AnotherRow{SampleEmbedded: SampleEmbedded{B: 0, C: ""}, D: ""},
+		"ee!", 5.5, "6",
+	}, args)
 }
 
 func TestMapper_Update(t *testing.T) {
