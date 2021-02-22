@@ -12,8 +12,8 @@ func ExampleMapper_Col() {
 	sm := sqluct.Mapper{}
 
 	type Order struct {
-		ID        int       `db:"order_id"`
-		CreatedAt time.Time `db:"created_at"`
+		ID        int       `db:"order_id,omitempty"`
+		CreatedAt time.Time `db:"created_at,omitempty"`
 	}
 
 	o := Order{
@@ -36,7 +36,7 @@ func ExampleMapper_Insert() {
 	sm := sqluct.Mapper{}
 
 	type Order struct {
-		ID     int `db:"order_id"`
+		ID     int `db:"order_id,omitempty"`
 		Amount int `db:"amount"`
 		UserID int `db:"user_id"`
 	}
@@ -45,7 +45,7 @@ func ExampleMapper_Insert() {
 	o.Amount = 100
 	o.UserID = 123
 
-	q := sm.Insert(squirrel.Insert("orders"), o, sqluct.SkipZeroValues)
+	q := sm.Insert(squirrel.Insert("orders"), o)
 
 	query, args, err := q.ToSql()
 	fmt.Println(query, args, err)
@@ -58,11 +58,11 @@ func ExampleMapper_Update() {
 
 	type OrderData struct {
 		Amount int `db:"amount"`
-		UserID int `db:"user_id"`
+		UserID int `db:"user_id,omitempty"`
 	}
 
 	type Order struct {
-		ID int `db:"order_id"`
+		ID int `db:"order_id,omitempty"`
 		OrderData
 	}
 
@@ -86,11 +86,11 @@ func ExampleMapper_Select() {
 
 	type OrderData struct {
 		Amount int `db:"amount"`
-		UserID int `db:"user_id"`
+		UserID int `db:"user_id,omitempty"`
 	}
 
 	type Order struct {
-		ID int `db:"order_id"`
+		ID int `db:"order_id,omitempty"`
 		OrderData
 	}
 
@@ -112,7 +112,7 @@ func ExampleMapper_WhereEq() {
 
 	type OrderData struct {
 		Amount int `db:"amount"`
-		UserID int `db:"user_id"`
+		UserID int `db:"user_id,omitempty"`
 	}
 
 	type Order struct {

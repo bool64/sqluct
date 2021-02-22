@@ -33,6 +33,11 @@ func SkipZeroValues(o *Options) {
 	o.SkipZeroValues = true
 }
 
+// IgnoreOmitEmpty instructs mapper to use zero values of fields with `omitempty`.
+func IgnoreOmitEmpty(o *Options) {
+	o.IgnoreOmitEmpty = true
+}
+
 // Columns is used to control which columns from the structure should be used.
 func Columns(columns ...string) func(o *Options) {
 	return func(o *Options) {
@@ -47,8 +52,11 @@ func OrderDesc(o *Options) {
 
 // Options defines mapping parameters.
 type Options struct {
-	// SkipZeroValues instructs mapper to ignore fields with zero values.
+	// SkipZeroValues instructs mapper to ignore fields with zero values regardless of `omitempty` tag.
 	SkipZeroValues bool
+
+	// IgnoreOmitEmpty instructs mapper to use zero values of fields with `omitempty`.
+	IgnoreOmitEmpty bool
 
 	// Columns is used to control which columns from the structure should be used.
 	Columns []string
@@ -66,19 +74,74 @@ func (sm *Mapper) Insert(q squirrel.InsertBuilder, val interface{}, options ...f
 	v := reflect.Indirect(reflect.ValueOf(val))
 
 	if v.Kind() == reflect.Slice {
-		for i := 0; i < v.Len(); i++ {
-			item := v.Index(i)
-			cols, vals := sm.ColumnsValues(item, options...)
+		return sm.sliceInsert(q, v, options...)
+	}
 
-			if i == 0 {
-				q = q.Columns(cols...)
+	cols, vals := sm.ColumnsValues(v, options...)
+	q = q.Columns(cols...)
+	q = q.Values(vals...)
+
+	return q
+}
+
+func (sm *Mapper) sliceInsert(q squirrel.InsertBuilder, v reflect.Value, options ...func(*Options)) squirrel.InsertBuilder {
+	var (
+		hCols         = make(map[string]struct{})
+		heterogeneous = false
+		qq            = q
+	)
+
+	for i := 0; i < v.Len(); i++ {
+		item := v.Index(i)
+		cols, vals := sm.ColumnsValues(item, options...)
+
+		if i == 0 {
+			for _, c := range cols {
+				hCols[c] = struct{}{}
 			}
 
-			q = q.Values(vals...)
+			qq = qq.Columns(cols...)
+		} else {
+			for _, c := range cols {
+				if _, found := hCols[c]; !found {
+					heterogeneous = true
+					hCols[c] = struct{}{}
+				}
+			}
 		}
-	} else {
-		cols, vals := sm.ColumnsValues(v, options...)
-		q = q.Columns(cols...)
+
+		if !heterogeneous {
+			qq = qq.Values(vals...)
+		}
+	}
+
+	if heterogeneous {
+		return sm.heterogeneousInsert(q, v, hCols, options...)
+	}
+
+	return qq
+}
+
+func (sm *Mapper) heterogeneousInsert(q squirrel.InsertBuilder, v reflect.Value, hCols map[string]struct{}, options ...func(*Options)) squirrel.InsertBuilder {
+	cols := make([]string, 0, len(hCols))
+	for c := range hCols {
+		cols = append(cols, c)
+	}
+
+	options = append(options[0:len(options):len(options)], func(options *Options) {
+		options.SkipZeroValues = false
+		options.IgnoreOmitEmpty = true
+		options.Columns = cols
+	})
+
+	for i := 0; i < v.Len(); i++ {
+		item := v.Index(i)
+		cols, vals := sm.ColumnsValues(item, options...)
+
+		if i == 0 {
+			q = q.Columns(cols...)
+		}
+
 		q = q.Values(vals...)
 	}
 
@@ -105,7 +168,7 @@ func (sm *Mapper) Select(q squirrel.SelectBuilder, columns interface{}, options 
 		return q
 	}
 
-	cols, _ := sm.ColumnsValues(reflect.ValueOf(columns), options...)
+	cols, _ := sm.ColumnsValues(reflect.ValueOf(columns), append(options, IgnoreOmitEmpty)...)
 	q = q.Columns(cols...)
 
 	return q
@@ -240,7 +303,13 @@ func (sm *Mapper) ColumnsValues(v reflect.Value, options ...func(*Options)) ([]s
 			colV := reflectx.FieldByIndexesReadOnly(v, fi.Index)
 			val := colV.Interface()
 
-			if o.SkipZeroValues && isZero(colV, val) {
+			_, omitEmpty := fi.Options["omitempty"]
+
+			if o.IgnoreOmitEmpty && omitEmpty {
+				omitEmpty = false
+			}
+
+			if (o.SkipZeroValues || omitEmpty) && isZero(colV, val) {
 				continue
 			}
 

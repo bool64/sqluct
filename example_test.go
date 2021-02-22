@@ -139,8 +139,7 @@ func ExampleStorage_Select_oneRow() {
 
 	qb := s.SelectStmt("my_table", row)
 
-	err := s.Select(ctx, qb, &row)
-	if err != nil {
+	if err := s.Select(ctx, qb, &row); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -163,8 +162,7 @@ func ExampleStorage_InsertStmt() {
 
 	qb := s.InsertStmt("my_table", row)
 
-	_, err := s.Exec(ctx, qb)
-	if err != nil {
+	if _, err := s.Exec(ctx, qb); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -192,8 +190,7 @@ func ExampleStorage_UpdateStmt() {
 	qb := s.UpdateStmt("my_table", row).
 		Where(s.Mapper.WhereEq(MyIdentity{ID: 123}))
 
-	_, err := s.Exec(ctx, qb)
-	if err != nil {
+	if _, err := s.Exec(ctx, qb); err != nil {
 		log.Fatal(err)
 	}
 }
