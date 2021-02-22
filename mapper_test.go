@@ -11,14 +11,14 @@ import (
 
 type (
 	Sample struct {
-		A              int        `db:"a"`
+		A              int        `db:"a,omitempty"`
 		DeeplyEmbedded            // Recursively embedded fields are used as root fields.
 		Meta           AnotherRow `db:"meta"` // Meta is a column, but its fields are not.
 	}
 
 	DeeplyEmbedded struct {
 		SampleEmbedded
-		E string `db:"e"`
+		E string `db:"e,omitempty"`
 	}
 
 	SampleEmbedded struct {
@@ -53,6 +53,79 @@ func TestInsertValue(t *testing.T) {
 	assert.Equal(t, []interface{}{1, AnotherRow{SampleEmbedded: SampleEmbedded{B: 0, C: ""}, D: ""}, "e!", 2.2, "3"}, args)
 }
 
+func BenchmarkMapper_Insert_single(b *testing.B) {
+	z := Sample{
+		A: 1,
+		DeeplyEmbedded: DeeplyEmbedded{
+			SampleEmbedded: SampleEmbedded{
+				B: 2.2,
+				C: "3",
+			},
+			E: "e!",
+		},
+	}
+
+	ps := squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar)
+	sm := sqluct.Mapper{}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		q := sm.Insert(ps.Insert("sample"), z)
+
+		_, _, err := q.ToSql()
+		if err != nil {
+			b.Fail()
+		}
+	}
+}
+
+func TestInsertValue_omitempty(t *testing.T) {
+	z := Sample{}
+
+	ps := squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar)
+	sm := sqluct.Mapper{}
+	q := sm.Insert(ps.Insert("sample"), z)
+	query, args, err := q.ToSql()
+	assert.NoError(t, err)
+	// a and e are missing for `omitempty`
+	assert.Equal(t, "INSERT INTO sample (meta,b,c) VALUES ($1,$2,$3)", query)
+	assert.Equal(t, []interface{}{AnotherRow{SampleEmbedded: SampleEmbedded{B: 0, C: ""}, D: ""}, 0.0, ""}, args)
+}
+
+func BenchmarkMapper_Insert_singleOmitempty(b *testing.B) {
+	z := Sample{}
+
+	ps := squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar)
+	sm := sqluct.Mapper{}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		q := sm.Insert(ps.Insert("sample"), z)
+
+		_, _, err := q.ToSql()
+		if err != nil {
+			b.Fail()
+		}
+	}
+}
+
+func TestInsertValue_IgnoreOmitEmpty(t *testing.T) {
+	z := Sample{}
+
+	ps := squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar)
+	sm := sqluct.Mapper{}
+	q := sm.Insert(ps.Insert("sample"), z, sqluct.IgnoreOmitEmpty)
+	query, args, err := q.ToSql()
+	assert.NoError(t, err)
+	// a and e are missing for `omitempty`
+	assert.Equal(t, "INSERT INTO sample (a,meta,e,b,c) VALUES ($1,$2,$3,$4,$5)", query)
+	assert.Equal(t, []interface{}{0, AnotherRow{SampleEmbedded: SampleEmbedded{B: 0, C: ""}, D: ""}, "", 0.0, ""}, args)
+}
+
 func TestMapper_Insert_nil(t *testing.T) {
 	sm := sqluct.Mapper{}
 	q := squirrel.Insert("sample")
@@ -71,7 +144,49 @@ func TestMapper_Select_nil(t *testing.T) {
 	assert.Equal(t, q, sm.Select(q, nil))
 }
 
-func TestInsertValueSlice(t *testing.T) {
+func TestInsertValueSlice_heterogeneous(t *testing.T) {
+	z := []Sample{
+		{
+			A: 0,
+			DeeplyEmbedded: DeeplyEmbedded{
+				SampleEmbedded: SampleEmbedded{
+					B: 2.2,
+					C: "3",
+				},
+				E: "e!",
+			},
+		},
+		{
+			A: 4,
+			DeeplyEmbedded: DeeplyEmbedded{
+				SampleEmbedded: SampleEmbedded{
+					B: 5.5,
+					C: "6",
+				},
+				E: "ee!",
+			},
+		},
+	}
+
+	ps := squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar)
+	sm := sqluct.Mapper{}
+	q := ps.Insert("sample")
+	assert.Equal(t, q, sm.Insert(q, nil))
+	q = sm.Insert(q, z)
+	query, args, err := q.ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "INSERT INTO sample (a,meta,e,b,c) VALUES ($1,$2,$3,$4,$5),($6,$7,$8,$9,$10)", query)
+	assert.Equal(t, []interface{}{
+		0,
+		AnotherRow{SampleEmbedded: SampleEmbedded{B: 0, C: ""}, D: ""},
+		"e!", 2.2, "3",
+		4,
+		AnotherRow{SampleEmbedded: SampleEmbedded{B: 0, C: ""}, D: ""},
+		"ee!", 5.5, "6",
+	}, args)
+}
+
+func TestInsertValueSlice_homogeneous(t *testing.T) {
 	z := []Sample{
 		{
 			A: 1,
@@ -111,6 +226,88 @@ func TestInsertValueSlice(t *testing.T) {
 		AnotherRow{SampleEmbedded: SampleEmbedded{B: 0, C: ""}, D: ""},
 		"ee!", 5.5, "6",
 	}, args)
+}
+
+func BenchmarkMapper_Insert_slice_heterogeneous(b *testing.B) {
+	z := []Sample{
+		{
+			A: 0,
+			DeeplyEmbedded: DeeplyEmbedded{
+				SampleEmbedded: SampleEmbedded{
+					B: 2.2,
+					C: "3",
+				},
+				E: "e!",
+			},
+		},
+		{
+			A: 4,
+			DeeplyEmbedded: DeeplyEmbedded{
+				SampleEmbedded: SampleEmbedded{
+					B: 5.5,
+					C: "6",
+				},
+				E: "ee!",
+			},
+		},
+	}
+
+	ps := squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar)
+	sm := sqluct.Mapper{}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		q := ps.Insert("sample")
+		q = sm.Insert(q, z)
+
+		_, _, err := q.ToSql()
+		if err != nil {
+			b.Fail()
+		}
+	}
+}
+
+func BenchmarkMapper_Insert_slice_homogeneous(b *testing.B) {
+	z := []Sample{
+		{
+			A: 1,
+			DeeplyEmbedded: DeeplyEmbedded{
+				SampleEmbedded: SampleEmbedded{
+					B: 2.2,
+					C: "3",
+				},
+				E: "e!",
+			},
+		},
+		{
+			A: 4,
+			DeeplyEmbedded: DeeplyEmbedded{
+				SampleEmbedded: SampleEmbedded{
+					B: 5.5,
+					C: "6",
+				},
+				E: "ee!",
+			},
+		},
+	}
+
+	ps := squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar)
+	sm := sqluct.Mapper{}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		q := ps.Insert("sample")
+		q = sm.Insert(q, z)
+
+		_, _, err := q.ToSql()
+		if err != nil {
+			b.Fail()
+		}
+	}
 }
 
 func TestInsertValueSlicePtr(t *testing.T) {
@@ -178,7 +375,7 @@ func TestMapper_Update(t *testing.T) {
 }
 
 func TestMapper_Select_struct(t *testing.T) {
-	z := SampleEmbedded{}
+	z := Sample{}
 
 	sm := sqluct.Mapper{}
 	q := sm.Select(squirrel.Select(), z)
@@ -186,8 +383,25 @@ func TestMapper_Select_struct(t *testing.T) {
 
 	query, args, err := q.ToSql()
 	assert.NoError(t, err)
-	assert.Equal(t, "SELECT b, c FROM sample", query)
+	assert.Equal(t, "SELECT a, meta, e, b, c FROM sample", query)
 	assert.Equal(t, []interface{}(nil), args)
+}
+
+func BenchmarkMapper_Select_struct(b *testing.B) {
+	z := Sample{}
+	sm := sqluct.Mapper{}
+
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		q := sm.Select(squirrel.Select(), z)
+		q = q.From("sample")
+
+		_, _, err := q.ToSql()
+		if err != nil {
+			b.Fail()
+		}
+	}
 }
 
 func TestMapper_Select_slice(t *testing.T) {

@@ -80,12 +80,11 @@ func (r *Referencer) AddTableAlias(rowStructPtr interface{}, alias string) {
 
 // Q quotes identifier.
 func (r *Referencer) Q(tableAndColumn ...string) string {
-	q := r.IdentifierQuoter
-	if q == nil {
-		q = QuoteNoop
+	if r.IdentifierQuoter == nil {
+		return QuoteNoop(tableAndColumn...)
 	}
 
-	return q(tableAndColumn...)
+	return r.IdentifierQuoter(tableAndColumn...)
 }
 
 // Ref returns reference string for struct or field pointer that was previously added with AddTableAlias.

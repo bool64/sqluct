@@ -11,6 +11,9 @@ This module integrates [`github.com/Masterminds/squirrel`](https://github.com/Ma
 and [`github.com/jmoiron/sqlx`](https://github.com/jmoiron/sqlx) to allow seamless operation based on field tags of row
 structure.
 
+This library helps to eliminate literal string column references (e.g. `"created_at"`) and use field references
+instead (e.g. `s.Col(&row, &row.CreatedAt)` and other mapping functions).
+
 Field tags (`db` by default) act as a source of truth for column names to allow better maintainability and fewer errors.
 
 ## Simple CRUD
@@ -24,9 +27,9 @@ var (
 const tableName = "products"
 
 type Product struct {
-    ID        int       `db:"id"`
+    ID        int       `db:"id,omitempty"`
     Title     string    `db:"title"`
-    CreatedAt time.Time `db:"created_at"`
+    CreatedAt time.Time `db:"created_at,omitempty"`
 }
 
 // INSERT INTO products (id, title, created_at) VALUES (1, 'Apples', <now>), (2, 'Oranges', <now>)
@@ -47,8 +50,8 @@ if err != nil {
 // UPDATE products SET title = 'Bananas' WHERE id = 2
 _, err = s.Exec(
     ctx,
-    s.UpdateStmt(tableName, Product{Title: "Bananas"}, sqluct.SkipZeroValues).
-        Where(s.WhereEq(Product{ID: 2}, sqluct.SkipZeroValues)),
+    s.UpdateStmt(tableName, Product{Title: "Bananas"}).
+        Where(s.WhereEq(Product{ID: 2})),
 )
 if err != nil {
     log.Fatal(err)
@@ -129,3 +132,6 @@ fmt.Println(args)
 //
 // [John]
 ```
+
+## Omitting Zero Values
+

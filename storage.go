@@ -62,8 +62,7 @@ type Storage struct {
 func (s *Storage) InTx(ctx context.Context, fn func(context.Context) error) (err error) {
 	var finish func(ctx context.Context, err error) error
 
-	tx := TxFromContext(ctx)
-	if tx == nil {
+	if tx := TxFromContext(ctx); tx == nil {
 		finish = s.submitTx
 
 		// Start a new transaction.
