@@ -27,8 +27,7 @@ func (s StringStatement) ToSql() (string, []interface{}, error) { // nolint // M
 // NewStorage creates an instance of Storage.
 func NewStorage(db *sqlx.DB) *Storage {
 	return &Storage{
-		db:     db,
-		Format: squirrel.Dollar,
+		db: db,
 	}
 }
 
@@ -205,32 +204,68 @@ func (s *Storage) Select(ctx context.Context, qb ToSQL, dest interface{}) (err e
 
 // QueryBuilder returns query builder with placeholder format.
 func (s *Storage) QueryBuilder() squirrel.StatementBuilderType {
-	return squirrel.StatementBuilder.PlaceholderFormat(s.Format).RunWith(s.db)
+	format := s.Format
+
+	if format == nil {
+		format = squirrel.Dollar
+	}
+
+	return squirrel.StatementBuilder.PlaceholderFormat(format).RunWith(s.db)
+}
+
+func (s *Storage) options(options []func(*Options)) []func(*Options) {
+	if s.IdentifierQuoter != nil {
+		options = append(options, func(options *Options) {
+			if options.PrepareColumn == nil {
+				options.PrepareColumn = func(col string) string {
+					return s.IdentifierQuoter(col)
+				}
+			}
+		})
+	}
+
+	return options
 }
 
 // SelectStmt makes a select query builder.
 func (s *Storage) SelectStmt(tableName string, columns interface{}, options ...func(*Options)) squirrel.SelectBuilder {
+	if s.IdentifierQuoter != nil {
+		tableName = s.IdentifierQuoter(tableName)
+	}
+
 	qb := s.QueryBuilder().Select().From(tableName)
 
-	return s.Mapper.Select(qb, columns, options...)
+	return s.Mapper.Select(qb, columns, s.options(options)...)
 }
 
 // InsertStmt makes an insert query builder.
 func (s *Storage) InsertStmt(tableName string, val interface{}, options ...func(*Options)) squirrel.InsertBuilder {
+	if s.IdentifierQuoter != nil {
+		tableName = s.IdentifierQuoter(tableName)
+	}
+
 	qb := s.QueryBuilder().Insert(tableName)
 
-	return s.Mapper.Insert(qb, val, options...)
+	return s.Mapper.Insert(qb, val, s.options(options)...)
 }
 
 // UpdateStmt makes an update query builder.
 func (s *Storage) UpdateStmt(tableName string, val interface{}, options ...func(*Options)) squirrel.UpdateBuilder {
+	if s.IdentifierQuoter != nil {
+		tableName = s.IdentifierQuoter(tableName)
+	}
+
 	qb := s.QueryBuilder().Update(tableName)
 
-	return s.Mapper.Update(qb, val, options...)
+	return s.Mapper.Update(qb, val, s.options(options)...)
 }
 
 // DeleteStmt makes a delete query builder.
 func (s *Storage) DeleteStmt(tableName string) squirrel.DeleteBuilder {
+	if s.IdentifierQuoter != nil {
+		tableName = s.IdentifierQuoter(tableName)
+	}
+
 	return s.QueryBuilder().Delete(tableName)
 }
 
@@ -254,7 +289,7 @@ func (s *Storage) Ref() *Referencer {
 
 // WhereEq maps struct values as conditions to squirrel.Eq.
 func (s *Storage) WhereEq(conditions interface{}, options ...func(*Options)) squirrel.Eq {
-	return s.Mapper.WhereEq(conditions, options...)
+	return s.Mapper.WhereEq(conditions, s.options(options)...)
 }
 
 func (s *Storage) error(ctx context.Context, err error) error {

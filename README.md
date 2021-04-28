@@ -11,10 +11,22 @@ This module integrates [`github.com/Masterminds/squirrel`](https://github.com/Ma
 and [`github.com/jmoiron/sqlx`](https://github.com/jmoiron/sqlx) to allow seamless operation based on field tags of row
 structure.
 
+All three libraries collaborate with standard `database/sql` and do not take away low level control from user.
+
 This library helps to eliminate literal string column references (e.g. `"created_at"`) and use field references
-instead (e.g. `s.Col(&row, &row.CreatedAt)` and other mapping functions).
+instead (e.g. `rf.Ref(&row.CreatedAt)` and other mapping functions).
 
 Field tags (`db` by default) act as a source of truth for column names to allow better maintainability and fewer errors.
+
+## Components
+
+`Storage` is a high level service that provides query building, query executing and result fetching facilities
+as easy to use facades.
+
+`Mapper` is a lower level tool that focuses on managing `squirrel` query builder with row structures.
+
+`Referencer` helps to build complex statements by providing fully qualified and properly escaped names for 
+participating columns.
 
 ## Simple CRUD
 
@@ -135,3 +147,43 @@ fmt.Println(args)
 
 ## Omitting Zero Values
 
+When building `WHERE` conditions from row structure it is often needed skip empty fields from condition. 
+
+Behavior with empty fields (zero values) can be controlled via `omitempty` field tag flag and `sqluct.IgnoreOmitEmpty`,
+`sqluct.SkipZeroValues` options.
+
+Please check example below to learn about behavior differences.
+
+```go
+var s sqluct.Storage
+
+type Product struct {
+    ID    int    `db:"id,omitempty"`
+    Name  string `db:"name,omitempty"`
+    Price int    `db:"price"`
+}
+
+query, args, err := s.SelectStmt("products", Product{}).Where(s.WhereEq(Product{
+    ID:    123,
+    Price: 0,
+})).ToSql()
+fmt.Println(query, args, err)
+// This query skips `name` in where condition for its zero value and `omitempty` flag.
+//   SELECT id, name, price FROM products WHERE id = $1 AND price = $2 [123 0] <nil>
+
+query, args, err = s.SelectStmt("products", Product{}).Where(s.WhereEq(Product{
+    ID:    123,
+    Price: 0,
+}, sqluct.IgnoreOmitEmpty)).ToSql()
+fmt.Println(query, args, err)
+// This query adds `name` in where condition because IgnoreOmitEmpty is applied and `omitempty` flag is ignored.
+//   SELECT id, name, price FROM products WHERE id = $1 AND name = $2 AND price = $3 [123  0] <nil>
+
+query, args, err = s.SelectStmt("products", Product{}).Where(s.WhereEq(Product{
+    ID:    123,
+    Price: 0,
+}, sqluct.SkipZeroValues)).ToSql()
+fmt.Println(query, args, err)
+// This query adds skips both price and name from where condition because SkipZeroValues option is applied.
+//   SELECT id, name, price FROM products WHERE id = $1 [123] <nil>
+```

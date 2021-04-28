@@ -125,11 +125,50 @@ func ExampleMapper_WhereEq() {
 	o.UserID = 123
 
 	q := sm.
-		Select(squirrel.Select(), o).
+		Select(squirrel.Select().From("orders"), o).
 		Where(sm.WhereEq(o.OrderData))
 
 	query, args, err := q.ToSql()
 	fmt.Println(query, args, err)
 
-	// Output: SELECT order_id, amount, user_id WHERE amount = ? AND user_id = ? [100 123] <nil>
+	// Output: SELECT order_id, amount, user_id FROM orders WHERE amount = ? AND user_id = ? [100 123] <nil>
+}
+
+func ExampleMapper_WhereEq_columnsOf() {
+	sm := sqluct.Mapper{}
+
+	type OrderData struct {
+		Amount int `db:"amount"`
+		UserID int `db:"user_id,omitempty"`
+	}
+
+	type Order struct {
+		ID int `db:"id"`
+		OrderData
+	}
+
+	type User struct {
+		ID   int    `db:"id"`
+		Name string `db:"name"`
+	}
+
+	rf := sqluct.Referencer{}
+	o := &Order{}
+	u := &User{}
+
+	rf.AddTableAlias(o, "orders")
+	rf.AddTableAlias(u, "users")
+
+	q := sm.
+		Select(squirrel.Select().From(rf.Ref(o)), o, rf.ColumnsOf(o)).
+		Join(rf.Fmt("%s ON %s = %s", u, &o.UserID, &u.ID)).
+		Where(sm.WhereEq(OrderData{
+			Amount: 100,
+			UserID: 123,
+		}, rf.ColumnsOf(o)))
+
+	query, args, err := q.ToSql()
+	fmt.Println(query, args, err)
+
+	// Output: SELECT orders.id, orders.amount, orders.user_id FROM orders JOIN users ON orders.user_id = users.id WHERE orders.amount = ? AND orders.user_id = ? [100 123] <nil>
 }

@@ -194,3 +194,81 @@ func ExampleStorage_UpdateStmt() {
 		log.Fatal(err)
 	}
 }
+
+func ExampleStorage_Select_join() {
+	var s sqluct.Storage
+
+	type OrderData struct {
+		Amount int `db:"amount"`
+		UserID int `db:"user_id,omitempty"`
+	}
+
+	type Order struct {
+		ID int `db:"id"`
+		OrderData
+	}
+
+	type User struct {
+		ID   int    `db:"id"`
+		Name string `db:"name"`
+	}
+
+	rf := s.Ref()
+	o := &Order{}
+	u := &User{}
+
+	rf.AddTableAlias(o, "orders")
+	rf.AddTableAlias(u, "users")
+
+	q := s.SelectStmt(rf.Ref(o), o, rf.ColumnsOf(o)).
+		Columns(rf.Ref(&u.Name)).
+		Join(rf.Fmt("%s ON %s = %s", u, &o.UserID, &u.ID)).
+		Where(s.WhereEq(OrderData{
+			Amount: 100,
+			UserID: 123,
+		}, rf.ColumnsOf(o)))
+
+	query, args, err := q.ToSql()
+	fmt.Println(query, args, err)
+
+	// Output: SELECT orders.id, orders.amount, orders.user_id, users.name FROM orders JOIN users ON orders.user_id = users.id WHERE orders.amount = $1 AND orders.user_id = $2 [100 123] <nil>
+}
+
+func ExampleSkipZeroValues() {
+	var s sqluct.Storage
+
+	type Product struct {
+		ID    int    `db:"id,omitempty"`
+		Name  string `db:"name,omitempty"`
+		Price int    `db:"price"`
+	}
+
+	query, args, err := s.SelectStmt("products", Product{}).Where(s.WhereEq(Product{
+		ID:    123,
+		Price: 0,
+	})).ToSql()
+	fmt.Println(query, args, err)
+	// This query skips `name` in where condition for its zero value and `omitempty` flag.
+	//   SELECT id, name, price FROM products WHERE id = $1 AND price = $2 [123 0] <nil>
+
+	query, args, err = s.SelectStmt("products", Product{}).Where(s.WhereEq(Product{
+		ID:    123,
+		Price: 0,
+	}, sqluct.IgnoreOmitEmpty)).ToSql()
+	fmt.Println(query, args, err)
+	// This query adds `name` in where condition because IgnoreOmitEmpty is applied and `omitempty` flag is ignored.
+	//   SELECT id, name, price FROM products WHERE id = $1 AND name = $2 AND price = $3 [123  0] <nil>
+
+	query, args, err = s.SelectStmt("products", Product{}).Where(s.WhereEq(Product{
+		ID:    123,
+		Price: 0,
+	}, sqluct.SkipZeroValues)).ToSql()
+	fmt.Println(query, args, err)
+	// This query adds skips both price and name from where condition because SkipZeroValues option is applied.
+	//   SELECT id, name, price FROM products WHERE id = $1 [123] <nil>
+
+	// Output:
+	// SELECT id, name, price FROM products WHERE id = $1 AND price = $2 [123 0] <nil>
+	// SELECT id, name, price FROM products WHERE id = $1 AND name = $2 AND price = $3 [123  0] <nil>
+	// SELECT id, name, price FROM products WHERE id = $1 [123] <nil>
+}

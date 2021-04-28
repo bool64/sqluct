@@ -8,7 +8,6 @@ import (
 // QuoteANSI adds double quotes to symbols names.
 //
 // Suitable for PostgreSQL, MySQL in ANSI SQL_MODE, SQLite statements.
-// Used in Referencer by default.
 func QuoteANSI(tableAndColumn ...string) string {
 	res := strings.Builder{}
 
@@ -45,6 +44,8 @@ func QuoteBackticks(tableAndColumn ...string) string {
 }
 
 // QuoteNoop does not add any quotes to symbol names.
+//
+// Used in Referencer by default.
 func QuoteNoop(tableAndColumn ...string) string {
 	return strings.Join(tableAndColumn, ".")
 }
@@ -58,6 +59,27 @@ type Referencer struct {
 	IdentifierQuoter func(tableAndColumn ...string) string
 
 	refs map[interface{}]string
+}
+
+// ColumnsOf makes a Mapper option to prefix columns with table alias.
+//
+// Argument is either a structure pointer or string alias.
+func (r *Referencer) ColumnsOf(rowStructPtr interface{}) func(o *Options) {
+	table, isString := rowStructPtr.(string)
+	if !isString {
+		t, found := r.refs[rowStructPtr]
+		if !found {
+			panic("row structure pointer needs to be added first with AddTableAlias")
+		}
+
+		table = t
+	}
+
+	return func(o *Options) {
+		o.PrepareColumn = func(col string) string {
+			return r.Q(table, col)
+		}
+	}
 }
 
 // AddTableAlias creates string references for row pointer and all suitable field pointers in it.
