@@ -31,6 +31,8 @@ func TestReferencer_Fmt(t *testing.T) {
 	dr := &DirectReport{}
 	rf.AddTableAlias(dr, "dr")
 
+	m := sqluct.Mapper{}
+
 	// Find direct reports that share same last name and manager is not named John.
 	qb := squirrel.StatementBuilder.Select(rf.Fmt("%s, %s", &dr.ManagerID, &dr.EmployeeID)).
 		From(rf.Fmt("%s AS %s", rf.Q("users"), manager)).
@@ -39,15 +41,17 @@ func TestReferencer_Fmt(t *testing.T) {
 			&dr.ManagerID, &manager.ID,
 			&dr.EmployeeID, &employee.ID)).
 		Where(rf.Fmt("%s = %s", &manager.LastName, &employee.LastName)).
-		Where(rf.Fmt("%s != ?", &manager.FirstName), "John")
+		Where(rf.Fmt("%s != ?", &manager.FirstName), "John").
+		Where(m.WhereEq(User{FirstName: "Larry", LastName: "Page"}, rf.ColumnsOf(employee), sqluct.SkipZeroValues))
 
 	stmt, args, err := qb.ToSql()
 	assert.NoError(t, err)
 	assert.Equal(t, `SELECT dr.manager_id, dr.employee_id `+
 		`FROM users AS manager `+
 		`INNER JOIN direct_reports AS dr ON dr.manager_id = manager.id AND dr.employee_id = employee.id `+
-		`WHERE manager.last_name = employee.last_name AND manager.first_name != ?`, stmt)
-	assert.Equal(t, []interface{}{"John"}, args)
+		`WHERE manager.last_name = employee.last_name AND manager.first_name != ? `+
+		`AND employee.first_name = ? AND employee.last_name = ?`, stmt)
+	assert.Equal(t, []interface{}{"John", "Larry", "Page"}, args)
 }
 
 func TestReferencer_Ref(t *testing.T) {
@@ -55,7 +59,7 @@ func TestReferencer_Ref(t *testing.T) {
 	rf.IdentifierQuoter = sqluct.QuoteANSI
 
 	row := &struct {
-		ID int `db:"id"`
+		ID int `db:"id,omitempty"`
 	}{}
 
 	rf.AddTableAlias(row, "some_table")
@@ -111,7 +115,7 @@ func BenchmarkReferencer_Fmt_full(b *testing.B) {
 	rf := sqluct.Referencer{}
 
 	type User struct {
-		ID        int    `db:"id"`
+		ID        int    `db:"id,omitempty"`
 		FirstName string `db:"first_name"`
 		LastName  string `db:"last_name"`
 	}

@@ -63,6 +63,9 @@ type Options struct {
 
 	// OrderDesc instructs mapper to use DESC order in Product func.
 	OrderDesc bool
+
+	// PrepareColumn allows control of column quotation or aliasing.
+	PrepareColumn func(col string) string
 }
 
 // Insert adds struct value or slice of struct values to squirrel.InsertBuilder.
@@ -316,7 +319,11 @@ func (sm *Mapper) ColumnsValues(v reflect.Value, options ...func(*Options)) ([]s
 			values = append(values, val)
 		}
 
-		columns = append(columns, fi.Name)
+		if o.PrepareColumn != nil {
+			columns = append(columns, o.PrepareColumn(fi.Name))
+		} else {
+			columns = append(columns, fi.Name)
+		}
 	}
 
 	return columns, values

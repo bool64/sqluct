@@ -251,14 +251,15 @@ func TestStorage_ExecContext(t *testing.T) {
 	assert.True(t, traceFinished)
 }
 
-func TestStorage_DeleteStmt(t *testing.T) {
+func TestStorage_DeleteStmt_backticks(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
 
 	st := sqluct.NewStorage(sqlx.NewDb(db, "mock"))
 	st.Format = squirrel.Dollar
+	st.IdentifierQuoter = sqluct.QuoteBackticks
 
-	mock.ExpectExec("DELETE FROM table").
+	mock.ExpectExec("DELETE FROM `table`").
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	_, err = st.DeleteStmt("table").Exec()
@@ -266,14 +267,15 @@ func TestStorage_DeleteStmt(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestStorage_InsertStmt(t *testing.T) {
+func TestStorage_InsertStmt_backticks(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
 
 	st := sqluct.NewStorage(sqlx.NewDb(db, "mock"))
 	st.Format = squirrel.Dollar
+	st.IdentifierQuoter = sqluct.QuoteBackticks
 
-	mock.ExpectExec("INSERT INTO table \\(order_id,amount\\) VALUES \\(\\$1,\\$2\\)").
+	mock.ExpectExec("INSERT INTO `table` \\(`order_id`,`amount`\\) VALUES \\(\\$1,\\$2\\)").
 		WithArgs(10, 20).WillReturnResult(sqlmock.NewResult(1, 1))
 
 	_, err = st.InsertStmt("table", struct {
@@ -298,6 +300,21 @@ func TestStorage_UpdateStmt(t *testing.T) {
 	assert.Equal(t, []interface{}{10, 20}, args)
 }
 
+func TestStorage_UpdateStmt_ansi(t *testing.T) {
+	st := sqluct.Storage{
+		Format: squirrel.Dollar,
+	}
+	st.IdentifierQuoter = sqluct.QuoteANSI
+
+	query, args, err := st.UpdateStmt("table", struct {
+		OrderID int `db:"order_id"`
+		Amount  int `db:"amount"`
+	}{10, 20}).ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, query, `UPDATE "table" SET "order_id" = $1, "amount" = $2`)
+	assert.Equal(t, []interface{}{10, 20}, args)
+}
+
 func TestStorage_SelectStmt(t *testing.T) {
 	st := sqluct.NewStorage(nil)
 
@@ -307,4 +324,16 @@ func TestStorage_SelectStmt(t *testing.T) {
 	}{}).ToSql()
 	assert.NoError(t, err)
 	assert.Equal(t, query, "SELECT order_id, amount FROM table")
+}
+
+func TestStorage_SelectStmt_backticks(t *testing.T) {
+	st := sqluct.NewStorage(nil)
+	st.IdentifierQuoter = sqluct.QuoteBackticks
+
+	query, _, err := st.SelectStmt("table", struct {
+		OrderID int `db:"order_id"`
+		Amount  int `db:"amount"`
+	}{}).ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, query, "SELECT `order_id`, `amount` FROM `table`")
 }
