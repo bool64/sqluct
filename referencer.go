@@ -83,6 +83,8 @@ func (r *Referencer) ColumnsOf(rowStructPtr interface{}) func(o *Options) {
 }
 
 // AddTableAlias creates string references for row pointer and all suitable field pointers in it.
+//
+// Empty alias is not added to column reference.
 func (r *Referencer) AddTableAlias(rowStructPtr interface{}, alias string) {
 	f, err := r.Mapper.FindColumnNames(rowStructPtr)
 	if err != nil {
@@ -93,10 +95,16 @@ func (r *Referencer) AddTableAlias(rowStructPtr interface{}, alias string) {
 		r.refs = make(map[interface{}]string, len(f)+1)
 	}
 
-	r.refs[rowStructPtr] = r.Q(alias)
+	if alias != "" {
+		r.refs[rowStructPtr] = r.Q(alias)
+	}
 
 	for ptr, fieldName := range f {
-		r.refs[ptr] = r.Q(alias, fieldName)
+		if alias == "" {
+			r.refs[ptr] = r.Q(fieldName)
+		} else {
+			r.refs[ptr] = r.Q(alias, fieldName)
+		}
 	}
 }
 

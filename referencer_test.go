@@ -12,9 +12,9 @@ func TestReferencer_Fmt(t *testing.T) {
 	rf := sqluct.Referencer{}
 
 	type User struct {
-		ID        int    `db:"id"`
-		FirstName string `db:"first_name"`
-		LastName  string `db:"last_name"`
+		ID        int    `db:"id,omitempty"`
+		FirstName string `db:"first_name,omitempty"`
+		LastName  string `db:"last_name,omitempty"`
 	}
 
 	type DirectReport struct {
@@ -42,7 +42,8 @@ func TestReferencer_Fmt(t *testing.T) {
 			&dr.EmployeeID, &employee.ID)).
 		Where(rf.Fmt("%s = %s", &manager.LastName, &employee.LastName)).
 		Where(rf.Fmt("%s != ?", &manager.FirstName), "John").
-		Where(m.WhereEq(User{FirstName: "Larry", LastName: "Page"}, rf.ColumnsOf(employee), sqluct.SkipZeroValues))
+		Where(m.WhereEq(User{FirstName: "Larry", LastName: "Page"}, rf.ColumnsOf(employee))).
+		Where(squirrel.NotEq(m.WhereEq(User{FirstName: "Sergey", LastName: "Brin"}, rf.ColumnsOf("manager"))))
 
 	stmt, args, err := qb.ToSql()
 	assert.NoError(t, err)
@@ -50,8 +51,9 @@ func TestReferencer_Fmt(t *testing.T) {
 		`FROM users AS manager `+
 		`INNER JOIN direct_reports AS dr ON dr.manager_id = manager.id AND dr.employee_id = employee.id `+
 		`WHERE manager.last_name = employee.last_name AND manager.first_name != ? `+
-		`AND employee.first_name = ? AND employee.last_name = ?`, stmt)
-	assert.Equal(t, []interface{}{"John", "Larry", "Page"}, args)
+		`AND employee.first_name = ? AND employee.last_name = ? `+
+		`AND manager.first_name <> ? AND manager.last_name <> ?`, stmt)
+	assert.Equal(t, []interface{}{"John", "Larry", "Page", "Sergey", "Brin"}, args)
 }
 
 func TestReferencer_Ref(t *testing.T) {
@@ -62,9 +64,18 @@ func TestReferencer_Ref(t *testing.T) {
 		ID int `db:"id,omitempty"`
 	}{}
 
+	row2 := &struct {
+		ID int `db:"id,omitempty"`
+	}{}
+
 	rf.AddTableAlias(row, "some_table")
+	rf.AddTableAlias(row2, "")
 	assert.Equal(t, `"some_table"`, rf.Ref(row))
 	assert.Equal(t, `"some_table"."id"`, rf.Ref(&row.ID))
+	assert.Panics(t, func() {
+		rf.Ref(row2)
+	})
+	assert.Equal(t, `"id"`, rf.Ref(&row2.ID))
 	assert.Panics(t, func() {
 		rf.Ref(nil)
 	})
