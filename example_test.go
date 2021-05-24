@@ -188,7 +188,7 @@ func ExampleStorage_UpdateStmt() {
 	}
 
 	qb := s.UpdateStmt("my_table", row).
-		Where(s.Mapper.WhereEq(MyIdentity{ID: 123}))
+		Where(s.WhereEq(MyIdentity{ID: 123}))
 
 	if _, err := s.Exec(ctx, qb); err != nil {
 		log.Fatal(err)
