@@ -235,7 +235,7 @@ func (s *Storage) SelectStmt(tableName string, columns interface{}, options ...f
 
 	qb := s.QueryBuilder().Select().From(tableName)
 
-	return s.Mapper.Select(qb, columns, s.options(options)...)
+	return mapper(s.Mapper).Select(qb, columns, s.options(options)...)
 }
 
 // InsertStmt makes an insert query builder.
@@ -246,7 +246,7 @@ func (s *Storage) InsertStmt(tableName string, val interface{}, options ...func(
 
 	qb := s.QueryBuilder().Insert(tableName)
 
-	return s.Mapper.Insert(qb, val, s.options(options)...)
+	return mapper(s.Mapper).Insert(qb, val, s.options(options)...)
 }
 
 // UpdateStmt makes an update query builder.
@@ -257,7 +257,7 @@ func (s *Storage) UpdateStmt(tableName string, val interface{}, options ...func(
 
 	qb := s.QueryBuilder().Update(tableName)
 
-	return s.Mapper.Update(qb, val, s.options(options)...)
+	return mapper(s.Mapper).Update(qb, val, s.options(options)...)
 }
 
 // DeleteStmt makes a delete query builder.
@@ -271,7 +271,7 @@ func (s *Storage) DeleteStmt(tableName string) squirrel.DeleteBuilder {
 
 // Col will try to find column name and will panic on error.
 func (s *Storage) Col(structPtr, fieldPtr interface{}) string {
-	col := s.Mapper.Col(structPtr, fieldPtr)
+	col := mapper(s.Mapper).Col(structPtr, fieldPtr)
 	if s.IdentifierQuoter != nil {
 		col = s.IdentifierQuoter(col)
 	}
@@ -289,7 +289,7 @@ func (s *Storage) Ref() *Referencer {
 
 // WhereEq maps struct values as conditions to squirrel.Eq.
 func (s *Storage) WhereEq(conditions interface{}, options ...func(*Options)) squirrel.Eq {
-	return s.Mapper.WhereEq(conditions, s.options(options)...)
+	return mapper(s.Mapper).WhereEq(conditions, s.options(options)...)
 }
 
 func (s *Storage) error(ctx context.Context, err error) error {
@@ -298,4 +298,17 @@ func (s *Storage) error(ctx context.Context, err error) error {
 	}
 
 	return err
+}
+
+func mapper(m *Mapper) *Mapper {
+	if m == nil {
+		return defaultMapper
+	}
+
+	return m
+}
+
+// DB returns database instance.
+func (s *Storage) DB() *sqlx.DB {
+	return s.db
 }

@@ -86,7 +86,7 @@ func (r *Referencer) ColumnsOf(rowStructPtr interface{}) func(o *Options) {
 //
 // Empty alias is not added to column reference.
 func (r *Referencer) AddTableAlias(rowStructPtr interface{}, alias string) {
-	f, err := r.Mapper.FindColumnNames(rowStructPtr)
+	f, err := mapper(r.Mapper).FindColumnNames(rowStructPtr)
 	if err != nil {
 		panic(err)
 	}

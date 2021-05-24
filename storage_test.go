@@ -337,3 +337,13 @@ func TestStorage_SelectStmt_backticks(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, query, "SELECT `order_id`, `amount` FROM `table`")
 }
+
+func TestStorage_DB(t *testing.T) {
+	db, _, err := sqlmock.New()
+	assert.NoError(t, err)
+
+	dbx := sqlx.NewDb(db, "test")
+	st := sqluct.NewStorage(dbx)
+
+	assert.Equal(t, dbx, st.DB())
+}
