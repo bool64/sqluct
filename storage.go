@@ -299,3 +299,8 @@ func (s *Storage) error(ctx context.Context, err error) error {
 
 	return err
 }
+
+// DB returns database instance.
+func (s *Storage) DB() *sqlx.DB {
+	return s.db
+}
