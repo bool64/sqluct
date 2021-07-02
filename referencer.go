@@ -2,6 +2,7 @@ package sqluct
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -58,7 +59,8 @@ type Referencer struct {
 	// Default QuoteNoop.
 	IdentifierQuoter func(tableAndColumn ...string) string
 
-	refs map[interface{}]string
+	refs    map[interface{}]string
+	columns map[interface{}][]string
 }
 
 // ColumnsOf makes a Mapper option to prefix columns with table alias.
@@ -95,9 +97,31 @@ func (r *Referencer) AddTableAlias(rowStructPtr interface{}, alias string) {
 		r.refs = make(map[interface{}]string, len(f)+1)
 	}
 
+	if r.columns == nil {
+		r.columns = make(map[interface{}][]string)
+	}
+
 	if alias != "" {
 		r.refs[rowStructPtr] = r.Q(alias)
 	}
+
+	columns := make([]string, 0, len(f))
+
+	for _, fieldName := range f {
+		var col string
+
+		if alias == "" {
+			col = r.Q(fieldName)
+		} else {
+			col = r.Q(alias, fieldName)
+		}
+
+		columns = append(columns, col)
+	}
+
+	sort.Strings(columns)
+
+	r.columns[rowStructPtr] = columns
 
 	for ptr, fieldName := range f {
 		if alias == "" {
@@ -125,7 +149,7 @@ func (r *Referencer) Ref(ptr interface{}) string {
 		return ref
 	}
 
-	panic(errFieldNotFound)
+	panic(errUnknownFieldOrRow)
 }
 
 // Fmt formats according to a format specified replacing ptrs with their reference strings where possible.
@@ -143,4 +167,13 @@ func (r *Referencer) Fmt(format string, ptrs ...interface{}) string {
 	}
 
 	return fmt.Sprintf(format, args...)
+}
+
+// Cols returns column references of a row structure.
+func (r *Referencer) Cols(ptr interface{}) []string {
+	if cols, found := r.columns[ptr]; found {
+		return cols
+	}
+
+	panic(errUnknownFieldOrRow)
 }

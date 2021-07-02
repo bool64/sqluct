@@ -10,9 +10,9 @@ import (
 )
 
 var (
-	errFieldNotFound = errors.New("could not find field value in struct")
-	errNotAPointer   = errors.New("can not take address of structure, please pass a pointer")
-	errNilArgument   = errors.New("structPtr and fieldPtr are required")
+	errUnknownFieldOrRow = errors.New("unknown field or row or not a pointer")
+	errNotAPointer       = errors.New("can not take address of structure, please pass a pointer")
+	errNilArgument       = errors.New("structPtr and fieldPtr are required")
 )
 
 // Mapper prepares select, insert and update statements.
@@ -354,7 +354,7 @@ func (sm *Mapper) FindColumnName(structPtr, fieldPtr interface{}) (string, error
 		}
 	}
 
-	return "", errFieldNotFound
+	return "", errUnknownFieldOrRow
 }
 
 func (sm *Mapper) typeMap(t reflect.Type) *reflectx.StructMap {
@@ -424,6 +424,10 @@ func (sm *Mapper) FindColumnNames(structPtr interface{}) (map[interface{}]string
 
 	tm := sm.typeMap(t)
 	for _, fi := range tm.Index {
+		if fi.Embedded {
+			continue
+		}
+
 		fv := reflectx.FieldByIndexesReadOnly(v, fi.Index)
 		res[fv.Addr().Interface()] = fi.Name
 	}

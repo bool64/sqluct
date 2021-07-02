@@ -89,6 +89,30 @@ func TestReferencer_Ref(t *testing.T) {
 	})
 }
 
+func TestReferencer_Cols(t *testing.T) {
+	rf := sqluct.Referencer{}
+	rf.IdentifierQuoter = sqluct.QuoteBackticks
+
+	type r struct {
+		ID   int    `db:"id,omitempty"`
+		Name string `db:"name"`
+	}
+
+	row := &r{}
+	row2 := &r{}
+	unknown := &r{}
+
+	rf.AddTableAlias(row, "some_table")
+	rf.AddTableAlias(row2, "")
+
+	assert.Equal(t, []string{"`some_table`.`id`", "`some_table`.`name`"}, rf.Cols(row))
+	assert.Equal(t, []string{"`id`", "`name`"}, rf.Cols(row2))
+
+	assert.Panics(t, func() {
+		rf.Cols(unknown)
+	})
+}
+
 func TestQuoteNoop(t *testing.T) {
 	assert.Equal(t, "one.two", sqluct.QuoteNoop("one", "two"))
 	assert.Equal(t, "", sqluct.QuoteNoop())

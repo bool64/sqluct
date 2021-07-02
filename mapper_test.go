@@ -529,7 +529,7 @@ func TestMapper_FindColumnName(t *testing.T) {
 		{&s, &s.B, "b", ""},
 		{&s, &s.C, "c", ""},
 		{nil, nil, "", "structPtr and fieldPtr are required"},
-		{&s, 123, "", "could not find field value in struct"},
+		{&s, 123, "", "unknown field or row or not a pointer"},
 		{s, &s.A, "", "can not take address of structure, please pass a pointer"},
 	} {
 		tc := tc
