@@ -555,3 +555,46 @@ func TestMapper_Col(t *testing.T) {
 		sm.Col(&s, 123)
 	})
 }
+
+func BenchmarkMapper_Select_ref(b *testing.B) {
+	sm := sqluct.Mapper{}
+
+	type OrderData struct {
+		Amount int `db:"amount"`
+		UserID int `db:"user_id,omitempty"`
+	}
+
+	type Order struct {
+		ID int `db:"id"`
+		OrderData
+	}
+
+	type User struct {
+		ID   int    `db:"id"`
+		Name string `db:"name"`
+	}
+
+	rf := sqluct.Referencer{}
+	o := &Order{}
+	u := &User{}
+
+	rf.AddTableAlias(o, "orders")
+	rf.AddTableAlias(u, "users")
+
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		q := sm.
+			Select(squirrel.Select().From(rf.Ref(o)), o, rf.ColumnsOf(o)).
+			Join(rf.Fmt("%s ON %s = %s", u, &o.UserID, &u.ID)).
+			Where(sm.WhereEq(OrderData{
+				Amount: 100,
+				UserID: 123,
+			}, rf.ColumnsOf(o)))
+
+		_, _, err := q.ToSql()
+		if err != nil {
+			b.Fail()
+		}
+	}
+}
