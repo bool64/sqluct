@@ -89,7 +89,9 @@ func (s *Storage) InTx(ctx context.Context, fn func(context.Context) error) (err
 func (s *Storage) submitTx(ctx context.Context, err error) error {
 	tx := TxFromContext(ctx)
 	if tx == nil {
-		return s.error(ctx, ctxd.NewError(ctx, "no running transaction"))
+		err := ctxd.NewError(ctx, "no running transaction")
+
+		return s.error(ctx, err)
 	}
 
 	if err != nil {
