@@ -6,9 +6,9 @@ require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/Masterminds/squirrel v1.5.3
 	github.com/bool64/ctxd v1.1.3
-	github.com/bool64/dev v0.2.13
+	github.com/bool64/dev v0.2.17
 	github.com/jmoiron/sqlx v1.3.5
-	github.com/stretchr/testify v1.7.2
+	github.com/stretchr/testify v1.8.0
 )
 
 require (
