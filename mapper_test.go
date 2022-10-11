@@ -598,3 +598,32 @@ func BenchmarkMapper_Select_ref(b *testing.B) {
 		}
 	}
 }
+
+func TestInsertIgnore(t *testing.T) {
+	s := sqluct.Storage{}
+
+	assert.Panics(t, func() {
+		s.InsertStmt("table", Sample{}, sqluct.InsertIgnore)
+	})
+
+	s.Mapper = &sqluct.Mapper{}
+	s.Mapper.Dialect = sqluct.DialectMySQL
+	s.Format = squirrel.Question
+	assertStatement(t, "INSERT IGNORE INTO table (meta,b,c) VALUES (?,?,?)", s.InsertStmt("table", Sample{}, sqluct.InsertIgnore))
+
+	s.Mapper.Dialect = sqluct.DialectSQLite3
+	s.Format = squirrel.Question
+	assertStatement(t, "INSERT OR IGNORE INTO table (meta,b,c) VALUES (?,?,?)", s.InsertStmt("table", Sample{}, sqluct.InsertIgnore))
+
+	s.Mapper.Dialect = sqluct.DialectPostgres
+	s.Format = squirrel.Dollar
+	assertStatement(t, "INSERT INTO table (meta,b,c) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING", s.InsertStmt("table", Sample{}, sqluct.InsertIgnore))
+}
+
+func assertStatement(t *testing.T, s string, qb sqluct.ToSQL) {
+	t.Helper()
+
+	stmt, _, err := qb.ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, s, stmt)
+}
