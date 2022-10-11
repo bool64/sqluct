@@ -2,6 +2,7 @@ package sqluct
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"sync"
 
@@ -18,6 +19,7 @@ var (
 // Mapper prepares select, insert and update statements.
 type Mapper struct {
 	ReflectMapper *reflectx.Mapper
+	Dialect       Dialect
 
 	mu    sync.Mutex
 	types map[reflect.Type]*reflectx.StructMap
@@ -38,7 +40,12 @@ func IgnoreOmitEmpty(o *Options) {
 	o.IgnoreOmitEmpty = true
 }
 
-// Columns is used to control which columns from the structure should be used.
+// InsertIgnore enables ignoring of row conflict during INSERT.
+func InsertIgnore(o *Options) {
+	o.InsertIgnore = true
+}
+
+// Columns are used to control which columns from the structure should be used.
 func Columns(columns ...string) func(o *Options) {
 	return func(o *Options) {
 		o.Columns = columns
@@ -50,7 +57,7 @@ func OrderDesc(o *Options) {
 	o.OrderDesc = true
 }
 
-// Options defines mapping parameters.
+// Options defines mapping and query building parameters.
 type Options struct {
 	// SkipZeroValues instructs mapper to ignore fields with zero values regardless of `omitempty` tag.
 	SkipZeroValues bool
@@ -66,6 +73,13 @@ type Options struct {
 
 	// PrepareColumn allows control of column quotation or aliasing.
 	PrepareColumn func(col string) string
+
+	// InsertIgnore enables ignoring of row conflict during INSERT.
+	// Uses
+	//  - INSERT IGNORE for MySQL,
+	//  - INSERT ON IGNORE for SQLite3,
+	//  - INSERT ... ON CONFLICT DO NOTHING for Postgres.
+	InsertIgnore bool
 }
 
 // Insert adds struct value or slice of struct values to squirrel.InsertBuilder.
@@ -75,19 +89,39 @@ func (sm *Mapper) Insert(q squirrel.InsertBuilder, val interface{}, options ...f
 	}
 
 	v := reflect.Indirect(reflect.ValueOf(val))
+	o := Options{}
 
-	if v.Kind() == reflect.Slice {
-		return sm.sliceInsert(q, v, options...)
+	for _, option := range options {
+		option(&o)
 	}
 
-	cols, vals := sm.ColumnsValues(v, options...)
+	if v.Kind() == reflect.Slice {
+		return sm.sliceInsert(q, v, o)
+	}
+
+	cols, vals := sm.columnsValues(v, o)
 	q = q.Columns(cols...)
 	q = q.Values(vals...)
+
+	if o.InsertIgnore {
+		switch sm.Dialect {
+		case DialectMySQL:
+			q = q.Options("IGNORE")
+		case DialectSQLite3:
+			q = q.Options("OR IGNORE")
+		case DialectPostgres:
+			q = q.Suffix("ON CONFLICT DO NOTHING")
+		case DialectUnknown:
+			panic("can not apply INSERT IGNORE for unknown dialect")
+		default:
+			panic(fmt.Sprintf("can not apply INSERT IGNORE for dialect %q", sm.Dialect))
+		}
+	}
 
 	return q
 }
 
-func (sm *Mapper) sliceInsert(q squirrel.InsertBuilder, v reflect.Value, options ...func(*Options)) squirrel.InsertBuilder {
+func (sm *Mapper) sliceInsert(q squirrel.InsertBuilder, v reflect.Value, o Options) squirrel.InsertBuilder {
 	var (
 		hCols         = make(map[string]struct{})
 		heterogeneous = false
@@ -96,7 +130,7 @@ func (sm *Mapper) sliceInsert(q squirrel.InsertBuilder, v reflect.Value, options
 
 	for i := 0; i < v.Len(); i++ {
 		item := v.Index(i)
-		cols, vals := sm.ColumnsValues(item, options...)
+		cols, vals := sm.columnsValues(item, o)
 
 		if i == 0 {
 			for _, c := range cols {
@@ -119,27 +153,25 @@ func (sm *Mapper) sliceInsert(q squirrel.InsertBuilder, v reflect.Value, options
 	}
 
 	if heterogeneous {
-		return sm.heterogeneousInsert(q, v, hCols, options...)
+		return sm.heterogeneousInsert(q, v, hCols, o)
 	}
 
 	return qq
 }
 
-func (sm *Mapper) heterogeneousInsert(q squirrel.InsertBuilder, v reflect.Value, hCols map[string]struct{}, options ...func(*Options)) squirrel.InsertBuilder {
+func (sm *Mapper) heterogeneousInsert(q squirrel.InsertBuilder, v reflect.Value, hCols map[string]struct{}, o Options) squirrel.InsertBuilder {
 	cols := make([]string, 0, len(hCols))
 	for c := range hCols {
 		cols = append(cols, c)
 	}
 
-	options = append(options[0:len(options):len(options)], func(options *Options) {
-		options.SkipZeroValues = false
-		options.IgnoreOmitEmpty = true
-		options.Columns = cols
-	})
+	o.SkipZeroValues = false
+	o.IgnoreOmitEmpty = true
+	o.Columns = cols
 
 	for i := 0; i < v.Len(); i++ {
 		item := v.Index(i)
-		cols, vals := sm.ColumnsValues(item, options...)
+		cols, vals := sm.columnsValues(item, o)
 
 		if i == 0 {
 			q = q.Columns(cols...)
@@ -157,7 +189,13 @@ func (sm *Mapper) Update(q squirrel.UpdateBuilder, val interface{}, options ...f
 		return q
 	}
 
-	cols, vals := sm.ColumnsValues(reflect.ValueOf(val), options...)
+	o := Options{}
+
+	for _, option := range options {
+		option(&o)
+	}
+
+	cols, vals := sm.columnsValues(reflect.ValueOf(val), o)
 	for i, col := range cols {
 		q = q.Set(col, vals[i])
 	}
@@ -171,7 +209,15 @@ func (sm *Mapper) Select(q squirrel.SelectBuilder, columns interface{}, options 
 		return q
 	}
 
-	cols, _ := sm.ColumnsValues(reflect.ValueOf(columns), append(options, IgnoreOmitEmpty)...)
+	o := Options{}
+
+	for _, option := range options {
+		option(&o)
+	}
+
+	o.IgnoreOmitEmpty = true
+
+	cols, _ := sm.columnsValues(reflect.ValueOf(columns), o)
 	q = q.Columns(cols...)
 
 	return q
@@ -179,7 +225,13 @@ func (sm *Mapper) Select(q squirrel.SelectBuilder, columns interface{}, options 
 
 // WhereEq maps struct values as conditions to squirrel.Eq.
 func (sm *Mapper) WhereEq(conditions interface{}, options ...func(*Options)) squirrel.Eq {
-	columns, values := sm.ColumnsValues(reflect.ValueOf(conditions), options...)
+	o := Options{}
+
+	for _, option := range options {
+		option(&o)
+	}
+
+	columns, values := sm.columnsValues(reflect.ValueOf(conditions), o)
 	eq := make(squirrel.Eq, len(columns))
 
 	for i, column := range columns {
@@ -197,15 +249,15 @@ func (sm *Mapper) WhereEq(conditions interface{}, options ...func(*Options)) squ
 //
 // Deprecated: use Col with DESC/ASC.
 func (sm *Mapper) Order(columns interface{}, options ...func(*Options)) string {
-	cols, _ := sm.ColumnsValues(reflect.ValueOf(columns), options...)
-	order := ""
-	orderDir := " ASC"
-
 	o := Options{}
 
 	for _, option := range options {
 		option(&o)
 	}
+
+	cols, _ := sm.columnsValues(reflect.ValueOf(columns), o)
+	order := ""
+	orderDir := " ASC"
 
 	if o.OrderDesc {
 		orderDir = " DESC"
@@ -222,16 +274,11 @@ func (sm *Mapper) Order(columns interface{}, options ...func(*Options)) string {
 	return ""
 }
 
-func (sm *Mapper) colType(v reflect.Value, options ...func(*Options)) (*reflectx.StructMap, Options, bool) {
+func (sm *Mapper) colType(v reflect.Value) (*reflectx.StructMap, bool) {
 	v = reflect.Indirect(v)
 	k := v.Kind()
 	t := v.Type()
 	skipValues := false
-	o := Options{}
-
-	for _, option := range options {
-		option(&o)
-	}
 
 	if k == reflect.Slice || k == reflect.Array {
 		t = t.Elem()
@@ -245,7 +292,7 @@ func (sm *Mapper) colType(v reflect.Value, options ...func(*Options)) (*reflectx
 
 	tm := sm.typeMap(t)
 
-	return tm, o, skipValues
+	return tm, skipValues
 }
 
 func (sm *Mapper) skip(fi *reflectx.FieldInfo, columns []string) bool {
@@ -293,7 +340,17 @@ func isZero(colV reflect.Value, val interface{}) bool {
 
 // ColumnsValues extracts columns and values from provided struct value.
 func (sm *Mapper) ColumnsValues(v reflect.Value, options ...func(*Options)) ([]string, []interface{}) {
-	tm, o, skipValues := sm.colType(v, options...)
+	o := Options{}
+
+	for _, option := range options {
+		option(&o)
+	}
+
+	return sm.columnsValues(v, o)
+}
+
+func (sm *Mapper) columnsValues(v reflect.Value, o Options) ([]string, []interface{}) {
+	tm, skipValues := sm.colType(v)
 	columns := make([]string, 0, len(tm.Index))
 	values := make([]interface{}, 0, len(tm.Index))
 
@@ -332,8 +389,9 @@ func (sm *Mapper) ColumnsValues(v reflect.Value, options ...func(*Options)) ([]s
 // FindColumnName returns column name of a database entity field.
 //
 // Entity field is defined by pointer to owner structure and pointer to field in that structure.
-//   entity := MyEntity{}
-//   name, found := sm.FindColumnName(&entity, &entity.UpdatedAt)
+//
+//	entity := MyEntity{}
+//	name, found := sm.FindColumnName(&entity, &entity.UpdatedAt)
 func (sm *Mapper) FindColumnName(structPtr, fieldPtr interface{}) (string, error) {
 	if structPtr == nil || fieldPtr == nil {
 		return "", errNilArgument

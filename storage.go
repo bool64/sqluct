@@ -20,7 +20,7 @@ type ToSQL interface {
 type StringStatement string
 
 // ToSql implements query builder result.
-func (s StringStatement) ToSql() (string, []interface{}, error) { // nolint // Method name matches ext. implementation.
+func (s StringStatement) ToSql() (string, []interface{}, error) { //nolint // Method name matches ext. implementation.
 	return string(s), nil, nil
 }
 
@@ -53,6 +53,17 @@ type Storage struct {
 	// instrumented context with callback to call after db call is finished.
 	Trace func(ctx context.Context, stmt string, args []interface{}) (newCtx context.Context, onFinish func(error))
 }
+
+// Dialect defines SQL dialect.
+type Dialect string
+
+// Supported dialects.
+const (
+	DialectUnknown  = Dialect("")
+	DialectMySQL    = Dialect("mysql")
+	DialectPostgres = Dialect("postgres")
+	DialectSQLite3  = Dialect("sqlite3")
+)
 
 // InTx runs callback in a transaction.
 //
