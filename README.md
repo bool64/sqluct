@@ -31,10 +31,13 @@ participating columns.
 ## Simple CRUD
 
 ```go
-var (
-    s   sqluct.Storage
-    ctx context.Context
+// Open DB connection.
+s, _ := sqluct.Open(
+    "postgres",
+    "postgres://pqgotest:password@localhost/pqgotest?sslmode=disable",
 )
+
+ctx := context.TODO()
 
 const tableName = "products"
 
