@@ -347,3 +347,17 @@ func TestStorage_DB(t *testing.T) {
 
 	assert.Equal(t, dbx, st.DB())
 }
+
+func TestStmt_ToSql(t *testing.T) {
+	s, a, err := sqluct.Stmt("SELECT * FROM foo WHERE id=? AND name=?", 1, "bar").ToSql()
+	assert.Equal(t, "SELECT * FROM foo WHERE id=? AND name=?", s)
+	assert.Equal(t, []interface{}{1, "bar"}, a)
+	assert.NoError(t, err)
+}
+
+func TestPlain_ToSql(t *testing.T) {
+	s, a, err := sqluct.Plain("SELECT * FROM foo WHERE id=1 AND name='bar'").ToSql()
+	assert.Equal(t, "SELECT * FROM foo WHERE id=1 AND name='bar'", s)
+	assert.Nil(t, a)
+	assert.NoError(t, err)
+}
