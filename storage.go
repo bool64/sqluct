@@ -19,9 +19,29 @@ type ToSQL interface {
 // StringStatement is a plain string statement.
 type StringStatement string
 
+// Plain is a plain string statement.
+type Plain = StringStatement
+
 // ToSql implements query builder result.
 func (s StringStatement) ToSql() (string, []interface{}, error) { //nolint // Method name matches ext. implementation.
 	return string(s), nil, nil
+}
+
+type stmt struct {
+	query string
+	args  []interface{}
+}
+
+func (s stmt) ToSql() (string, []interface{}, error) { //nolint // Method name matches ext. implementation.
+	return s.query, s.args, nil
+}
+
+// Stmt is a statement with placeholder arguments.
+func Stmt(query string, args ...interface{}) ToSQL {
+	return stmt{
+		query: query,
+		args:  args,
+	}
 }
 
 // Open opens a database specified by its database driver name and a
