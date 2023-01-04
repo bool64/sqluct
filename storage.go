@@ -24,6 +24,40 @@ func (s StringStatement) ToSql() (string, []interface{}, error) { //nolint // Me
 	return string(s), nil, nil
 }
 
+// Open opens a database specified by its database driver name and a
+// driver-specific data source name, usually consisting of at least a
+// database name and connection information.
+func Open(driverName, dataSourceName string) (*Storage, error) {
+	db, err := sql.Open(driverName, dataSourceName)
+	if err != nil {
+		return nil, err
+	}
+
+	dbx := sqlx.NewDb(db, driverName)
+
+	s := Storage{
+		db:     dbx,
+		Mapper: &Mapper{},
+	}
+
+	switch driverName {
+	case "postgres":
+		s.Mapper.Dialect = DialectPostgres
+		s.Format = squirrel.Dollar
+		s.IdentifierQuoter = QuoteANSI
+	case "mysql":
+		s.Mapper.Dialect = DialectMySQL
+		s.Format = squirrel.Question
+		s.IdentifierQuoter = QuoteBackticks
+	case "sqlite3", "sqlite":
+		s.Mapper.Dialect = DialectSQLite3
+		s.Format = squirrel.Question
+		s.IdentifierQuoter = QuoteBackticks
+	}
+
+	return &s, nil
+}
+
 // NewStorage creates an instance of Storage.
 func NewStorage(db *sqlx.DB) *Storage {
 	return &Storage{
@@ -67,7 +101,7 @@ const (
 
 // InTx runs callback in a transaction.
 //
-// If transaction already exists, it will reuse that. Otherwise it starts a new transaction and commit or rollback
+// If transaction already exists, it will reuse that. Otherwise, it starts a new transaction and commit or rollback
 // (in case of error) at the end.
 func (s *Storage) InTx(ctx context.Context, fn func(context.Context) error) (err error) {
 	var finish func(ctx context.Context, err error) error

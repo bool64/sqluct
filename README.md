@@ -31,10 +31,13 @@ participating columns.
 ## Simple CRUD
 
 ```go
-var (
-    s   sqluct.Storage
-    ctx context.Context
+// Open DB connection.
+s, _ := sqluct.Open(
+    "postgres",
+    "postgres://pqgotest:password@localhost/pqgotest?sslmode=disable",
 )
+
+ctx := context.TODO()
 
 const tableName = "products"
 
@@ -83,6 +86,20 @@ err = s.Select(ctx,
 if err != nil {
     log.Fatal(err)
 }
+
+// You can also use generic sqluct.Get and sqluct.List in go1.18 or later.
+//
+// SELECT id, title, created_at FROM products WHERE id != 3 AND created_at <= <now>
+result, err = sqluct.List[Product](ctx,
+	s,
+    s.SelectStmt(tableName, row).
+        Where(squirrel.NotEq(s.WhereEq(Product{ID: 3}, sqluct.SkipZeroValues))).
+        Where(squirrel.LtOrEq{s.Col(&row, &row.CreatedAt): time.Now()}),
+)
+if err != nil {
+    log.Fatal(err)
+}
+
 
 // DELETE FROM products WHERE id = 2
 _, err = s.Exec(ctx, s.DeleteStmt(tableName).Where(Product{ID: 2}, sqluct.SkipZeroValues))

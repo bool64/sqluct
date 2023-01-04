@@ -8,7 +8,6 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/bool64/sqluct"
-	"github.com/jmoiron/sqlx"
 )
 
 func ExampleStorage_InTx_full() {
@@ -89,11 +88,9 @@ func ExampleStorage_InTx() {
 
 func ExampleStorage_Select_slice() {
 	var (
-		db  *sqlx.DB // Setup db connection.
+		s   sqluct.Storage
 		ctx context.Context
 	)
-
-	s := sqluct.NewStorage(db)
 
 	// Define your entity as a struct with `db` field tags that correspond to column names in table.
 	type MyEntity struct {
@@ -271,4 +268,25 @@ func ExampleSkipZeroValues() {
 	// SELECT id, name, price FROM products WHERE id = $1 AND price = $2 [123 0] <nil>
 	// SELECT id, name, price FROM products WHERE id = $1 AND name = $2 AND price = $3 [123  0] <nil>
 	// SELECT id, name, price FROM products WHERE id = $1 [123] <nil>
+}
+
+func ExampleOpen() {
+	// Open DB connection.
+	st, err := sqluct.Open(
+		"postgres",
+		"postgres://pqgotest:password@localhost/pqgotest?sslmode=disable",
+	)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	// Use Storage.
+	var foo []struct {
+		Bar string `db:"bar"`
+	}
+
+	err = st.Select(context.TODO(), sqluct.StringStatement("SELECT bar FROM foo"), &foo)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
 }
