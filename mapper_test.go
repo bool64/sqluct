@@ -512,7 +512,11 @@ func TestMapper_Order(t *testing.T) {
 		Field2 int `db:"f2"`
 	}
 
-	assert.Equal(t, "f1 ASC, f2 ASC", sm.Order(Entity{}))
+	e := &Entity{}
+
+	rf := sqluct.Referencer{Mapper: &sm}
+	rf.AddTableAlias(e, "")
+	assert.Equal(t, "f1 ASC, f2 ASC", rf.Fmt("%s ASC, %s ASC", &e.Field1, &e.Field2))
 }
 
 func TestMapper_FindColumnName(t *testing.T) {
