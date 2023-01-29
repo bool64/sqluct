@@ -5,8 +5,11 @@ package sqluct
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"reflect"
+
+	"github.com/Masterminds/squirrel"
 )
 
 // SerialID is the name of field tag to indicate integer serial (auto increment) ID of the table.
@@ -30,6 +33,7 @@ func List[V any](ctx context.Context, s *Storage, qb ToSQL) ([]V, error) {
 	return v, err
 }
 
+// StorageOf is a type-safe facade to work with rows of specific type.
 type StorageOf[V any] struct {
 	*Referencer
 	R         *V
@@ -38,6 +42,7 @@ type StorageOf[V any] struct {
 	id        string
 }
 
+// Table configures and returns StorageOf in a table.
 func Table[V any](storage *Storage, tableName string) StorageOf[V] {
 	ar := StorageOf[V]{}
 	ar.s = storage
@@ -84,8 +89,14 @@ func (s *StorageOf[V]) Get(ctx context.Context, qb ToSQL) (V, error) {
 	return v, err
 }
 
-func (s *StorageOf[V]) Insert(ctx context.Context, v V, options ...func(o *Options)) (int64, error) {
-	q := s.s.InsertStmt(s.tableName, v, options...)
+// SelectStmt creates query statement with table name and row columns.
+func (s *StorageOf[V]) SelectStmt(options ...func(*Options)) squirrel.SelectBuilder {
+	return s.s.SelectStmt(s.tableName, s.R, options...)
+}
+
+// InsertRow inserts single row database table.
+func (s *StorageOf[V]) InsertRow(ctx context.Context, row V, options ...func(o *Options)) (int64, error) {
+	q := s.s.InsertStmt(s.tableName, row, options...)
 
 	if mapper(s.s.Mapper).Dialect == DialectPostgres && s.id != "" {
 		q = q.Suffix("RETURNING " + s.id)
@@ -119,4 +130,16 @@ func (s *StorageOf[V]) Insert(ctx context.Context, v V, options ...func(o *Optio
 	}
 
 	return id, nil
+}
+
+// InsertRows inserts multiple rows in database table.
+func (s *StorageOf[V]) InsertRows(ctx context.Context, rows []V, options ...func(o *Options)) (sql.Result, error) {
+	q := s.s.InsertStmt(s.tableName, rows, options...)
+
+	res, err := s.s.Exec(ctx, q)
+	if err != nil {
+		return nil, fmt.Errorf("insert: %w", err)
+	}
+
+	return res, nil
 }
