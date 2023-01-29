@@ -77,7 +77,7 @@ type Options struct {
 	// InsertIgnore enables ignoring of row conflict during INSERT.
 	// Uses
 	//  - INSERT IGNORE for MySQL,
-	//  - INSERT ON IGNORE for SQLite3,
+	//  - INSERT OR IGNORE for SQLite3,
 	//  - INSERT ... ON CONFLICT DO NOTHING for Postgres.
 	InsertIgnore bool
 }
@@ -95,14 +95,6 @@ func (sm *Mapper) Insert(q squirrel.InsertBuilder, val interface{}, options ...f
 		option(&o)
 	}
 
-	if v.Kind() == reflect.Slice {
-		return sm.sliceInsert(q, v, o)
-	}
-
-	cols, vals := sm.columnsValues(v, o)
-	q = q.Columns(cols...)
-	q = q.Values(vals...)
-
 	if o.InsertIgnore {
 		switch sm.Dialect {
 		case DialectMySQL:
@@ -117,6 +109,14 @@ func (sm *Mapper) Insert(q squirrel.InsertBuilder, val interface{}, options ...f
 			panic(fmt.Sprintf("can not apply INSERT IGNORE for dialect %q", sm.Dialect))
 		}
 	}
+
+	if v.Kind() == reflect.Slice {
+		return sm.sliceInsert(q, v, o)
+	}
+
+	cols, vals := sm.columnsValues(v, o)
+	q = q.Columns(cols...)
+	q = q.Values(vals...)
 
 	return q
 }
