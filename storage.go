@@ -346,8 +346,8 @@ func (s *Storage) Col(structPtr, fieldPtr interface{}) string {
 	return col
 }
 
-// Ref creates Referencer for query builder.
-func (s *Storage) Ref() *Referencer {
+// MakeReferencer creates Referencer for query builder.
+func (s *Storage) MakeReferencer() *Referencer {
 	return &Referencer{
 		Mapper:           s.Mapper,
 		IdentifierQuoter: s.IdentifierQuoter,

@@ -245,35 +245,6 @@ func (sm *Mapper) WhereEq(conditions interface{}, options ...func(*Options)) squ
 	return eq
 }
 
-// Order maps struct field tags as "ORDER BY".
-//
-// Deprecated: use Col with DESC/ASC.
-func (sm *Mapper) Order(columns interface{}, options ...func(*Options)) string {
-	o := Options{}
-
-	for _, option := range options {
-		option(&o)
-	}
-
-	cols, _ := sm.columnsValues(reflect.ValueOf(columns), o)
-	order := ""
-	orderDir := " ASC"
-
-	if o.OrderDesc {
-		orderDir = " DESC"
-	}
-
-	for _, col := range cols {
-		order += ", " + col + orderDir
-	}
-
-	if len(order) > 0 {
-		return order[2:]
-	}
-
-	return ""
-}
-
 func (sm *Mapper) colType(v reflect.Value) (*reflectx.StructMap, bool) {
 	v = reflect.Indirect(v)
 	k := v.Kind()
@@ -467,6 +438,10 @@ func (sm *Mapper) typeMap(t reflect.Type) *reflectx.StructMap {
 
 // FindColumnNames returns column names mapped by a pointer to a field.
 func (sm *Mapper) FindColumnNames(structPtr interface{}) (map[interface{}]string, error) {
+	return sm.findColumnNames(structPtr, nil)
+}
+
+func (sm *Mapper) findColumnNames(structPtr interface{}, filter func(fi *reflectx.FieldInfo) (pass bool)) (map[interface{}]string, error) {
 	if structPtr == nil {
 		return nil, errNilArgument
 	}
@@ -482,6 +457,10 @@ func (sm *Mapper) FindColumnNames(structPtr interface{}) (map[interface{}]string
 
 	tm := sm.typeMap(t)
 	for _, fi := range tm.Index {
+		if filter != nil && !filter(fi) {
+			continue
+		}
+
 		if fi.Embedded {
 			continue
 		}

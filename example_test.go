@@ -210,7 +210,7 @@ func ExampleStorage_Select_join() {
 		Name string `db:"name"`
 	}
 
-	rf := s.Ref()
+	rf := s.MakeReferencer()
 	o := &Order{}
 	u := &User{}
 
