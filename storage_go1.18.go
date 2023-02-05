@@ -94,6 +94,16 @@ func (s *StorageOf[V]) SelectStmt(options ...func(*Options)) squirrel.SelectBuil
 	return s.s.SelectStmt(s.tableName, s.R, options...)
 }
 
+// DeleteStmt creates delete statement with table name.
+func (s *StorageOf[V]) DeleteStmt() squirrel.DeleteBuilder {
+	return s.s.DeleteStmt(s.tableName)
+}
+
+// UpdateStmt creates update statement with table name and updated value (can be nil).
+func (s *StorageOf[V]) UpdateStmt(value any, options ...func(*Options)) squirrel.UpdateBuilder {
+	return s.s.UpdateStmt(s.tableName, value, options...)
+}
+
 // InsertRow inserts single row database table.
 func (s *StorageOf[V]) InsertRow(ctx context.Context, row V, options ...func(o *Options)) (int64, error) {
 	q := s.s.InsertStmt(s.tableName, row, options...)

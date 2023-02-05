@@ -302,7 +302,7 @@ func (s *Storage) SelectStmt(tableName string, columns interface{}, options ...f
 
 	qb := s.QueryBuilder().Select().From(tableName)
 
-	return mapper(s.Mapper).Select(qb, columns, s.options(options)...)
+	return mapper(s.Mapper).Select(qb, columns, s.options(options)...).RunWith(s.db)
 }
 
 // InsertStmt makes an insert query builder.
@@ -313,7 +313,7 @@ func (s *Storage) InsertStmt(tableName string, val interface{}, options ...func(
 
 	qb := s.QueryBuilder().Insert(tableName)
 
-	return mapper(s.Mapper).Insert(qb, val, s.options(options)...)
+	return mapper(s.Mapper).Insert(qb, val, s.options(options)...).RunWith(s.db)
 }
 
 // UpdateStmt makes an update query builder.
@@ -324,7 +324,7 @@ func (s *Storage) UpdateStmt(tableName string, val interface{}, options ...func(
 
 	qb := s.QueryBuilder().Update(tableName)
 
-	return mapper(s.Mapper).Update(qb, val, s.options(options)...)
+	return mapper(s.Mapper).Update(qb, val, s.options(options)...).RunWith(s.db)
 }
 
 // DeleteStmt makes a delete query builder.
@@ -333,7 +333,7 @@ func (s *Storage) DeleteStmt(tableName string) squirrel.DeleteBuilder {
 		tableName = s.IdentifierQuoter(tableName)
 	}
 
-	return s.QueryBuilder().Delete(tableName)
+	return s.QueryBuilder().Delete(tableName).RunWith(s.db)
 }
 
 // Col will try to find column name and will panic on error.
