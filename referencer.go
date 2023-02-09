@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	"github.com/Masterminds/squirrel"
 )
 
 // QuoteANSI adds double quotes to symbols names.
@@ -176,4 +178,9 @@ func (r *Referencer) Cols(ptr interface{}) []string {
 	}
 
 	panic(errUnknownFieldOrRow)
+}
+
+// Eq is a shortcut for squirrel.Eq{r.Ref(ptr): val}.
+func (r *Referencer) Eq(ptr interface{}, val interface{}) squirrel.Eq {
+	return squirrel.Eq{r.Ref(ptr): val}
 }
