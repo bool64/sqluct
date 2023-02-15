@@ -156,15 +156,15 @@ func (r *Referencer) Ref(ptr interface{}) string {
 
 // Fmt formats according to a format specified replacing ptrs with their reference strings where possible.
 //
-// Values that are not available as reference string are passed to fmt.Sprintf as is.
+// It panics if pointer is unknown.
 func (r *Referencer) Fmt(format string, ptrs ...interface{}) string {
 	args := make([]interface{}, 0, len(ptrs))
 
-	for _, fieldPtr := range ptrs {
+	for i, fieldPtr := range ptrs {
 		if ref, found := r.refs[fieldPtr]; found {
 			args = append(args, ref)
 		} else {
-			args = append(args, fieldPtr)
+			panic(fmt.Errorf("%w at position %d", errUnknownFieldOrRow, i))
 		}
 	}
 
