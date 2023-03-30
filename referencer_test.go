@@ -72,12 +72,20 @@ func TestReferencer_Ref(t *testing.T) {
 	rf.AddTableAlias(row2, "")
 	assert.Equal(t, `"some_table"`, rf.Ref(row))
 	assert.Equal(t, `"some_table"."id"`, rf.Ref(&row.ID))
+	assert.Equal(t, `id`, rf.Col(&row.ID))
 	assert.Panics(t, func() {
 		rf.Ref(row2)
 	})
+	assert.Panics(t, func() {
+		rf.Col(row2)
+	})
 	assert.Equal(t, `"id"`, rf.Ref(&row2.ID))
+	assert.Equal(t, `id`, rf.Col(&row2.ID))
 	assert.Panics(t, func() {
 		rf.Ref(nil)
+	})
+	assert.Panics(t, func() {
+		rf.Col(nil)
 	})
 	assert.Panics(t, func() {
 		// Must not be nil.
