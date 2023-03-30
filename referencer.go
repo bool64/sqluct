@@ -61,8 +61,9 @@ type Referencer struct {
 	// Default QuoteNoop.
 	IdentifierQuoter func(tableAndColumn ...string) string
 
-	refs    map[interface{}]string
-	columns map[interface{}][]string
+	refs          map[interface{}]string
+	columnNames   map[interface{}]string
+	structColumns map[interface{}][]string
 }
 
 // ColumnsOf makes a Mapper option to prefix columns with table alias.
@@ -99,8 +100,12 @@ func (r *Referencer) AddTableAlias(rowStructPtr interface{}, alias string) {
 		r.refs = make(map[interface{}]string, len(f)+1)
 	}
 
-	if r.columns == nil {
-		r.columns = make(map[interface{}][]string)
+	if r.columnNames == nil {
+		r.columnNames = make(map[interface{}]string, len(f))
+	}
+
+	if r.structColumns == nil {
+		r.structColumns = make(map[interface{}][]string)
 	}
 
 	if alias != "" {
@@ -109,7 +114,7 @@ func (r *Referencer) AddTableAlias(rowStructPtr interface{}, alias string) {
 
 	columns := make([]string, 0, len(f))
 
-	for _, fieldName := range f {
+	for ptr, fieldName := range f {
 		var col string
 
 		if alias == "" {
@@ -119,19 +124,13 @@ func (r *Referencer) AddTableAlias(rowStructPtr interface{}, alias string) {
 		}
 
 		columns = append(columns, col)
+		r.refs[ptr] = col
+		r.columnNames[ptr] = fieldName
 	}
 
 	sort.Strings(columns)
 
-	r.columns[rowStructPtr] = columns
-
-	for ptr, fieldName := range f {
-		if alias == "" {
-			r.refs[ptr] = r.Q(fieldName)
-		} else {
-			r.refs[ptr] = r.Q(alias, fieldName)
-		}
-	}
+	r.structColumns[rowStructPtr] = columns
 }
 
 // Q quotes identifier.
@@ -149,6 +148,18 @@ func (r *Referencer) Q(tableAndColumn ...string) string {
 func (r *Referencer) Ref(ptr interface{}) string {
 	if ref, found := r.refs[ptr]; found {
 		return ref
+	}
+
+	panic(errUnknownFieldOrRow)
+}
+
+// Col returns unescaped column name for field pointer that was previously added with AddTableAlias.
+//
+// It panics if pointer is unknown.
+// Might be used with Options.Columns.
+func (r *Referencer) Col(ptr interface{}) string {
+	if col, found := r.columnNames[ptr]; found {
+		return col
 	}
 
 	panic(errUnknownFieldOrRow)
@@ -173,7 +184,7 @@ func (r *Referencer) Fmt(format string, ptrs ...interface{}) string {
 
 // Cols returns column references of a row structure.
 func (r *Referencer) Cols(ptr interface{}) []string {
-	if cols, found := r.columns[ptr]; found {
+	if cols, found := r.structColumns[ptr]; found {
 		return cols
 	}
 
