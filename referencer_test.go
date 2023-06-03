@@ -182,9 +182,9 @@ func BenchmarkReferencer_Fmt_full(b *testing.B) {
 
 		// Find direct reports that share same last name and manager is not named John.
 		qb := squirrel.StatementBuilder.Select(rf.Fmt("%s, %s", &dr.ManagerID, &dr.EmployeeID)).
-			From(rf.Fmt("%s AS %s", rf.Q("users"), manager)).
-			InnerJoin(rf.Fmt("%s AS %s ON %s = %s AND %s = %s",
-				rf.Q("direct_reports"), dr,
+			From(rf.Q("users")+rf.Fmt("AS %s", manager)).
+			InnerJoin(rf.Q("direct_reports")+rf.Fmt(" AS %s ON %s = %s AND %s = %s",
+				dr,
 				&dr.ManagerID, &manager.ID,
 				&dr.EmployeeID, &employee.ID)).
 			Where(rf.Fmt("%s = %s", &manager.LastName, &employee.LastName)).
@@ -225,9 +225,9 @@ func BenchmarkReferencer_Fmt_lite(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		// Find direct reports that share same last name and manager is not named John.
 		qb := squirrel.StatementBuilder.Select(rf.Fmt("%s, %s", &dr.ManagerID, &dr.EmployeeID)).
-			From(rf.Fmt("%s AS %s", rf.Q("users"), manager)).
-			InnerJoin(rf.Fmt("%s AS %s ON %s = %s AND %s = %s",
-				rf.Q("direct_reports"), dr,
+			From(rf.Q("users")+rf.Fmt(" AS %s", manager)).
+			InnerJoin(rf.Q("direct_reports")+rf.Fmt(" AS %s ON %s = %s AND %s = %s",
+				dr,
 				&dr.ManagerID, &manager.ID,
 				&dr.EmployeeID, &employee.ID)).
 			Where(rf.Fmt("%s = %s", &manager.LastName, &employee.LastName)).
