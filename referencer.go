@@ -61,7 +61,7 @@ type Referencer struct {
 	// Default QuoteNoop.
 	IdentifierQuoter func(tableAndColumn ...string) string
 
-	refs          map[interface{}]string
+	refs          map[interface{}]Quoted
 	columnNames   map[interface{}]string
 	structColumns map[interface{}][]string
 }
@@ -70,19 +70,25 @@ type Referencer struct {
 //
 // Argument is either a structure pointer or string alias.
 func (r *Referencer) ColumnsOf(rowStructPtr interface{}) func(o *Options) {
-	table, isString := rowStructPtr.(string)
-	if !isString {
+	var table string
+
+	switch v := rowStructPtr.(type) {
+	case string:
+		table = v
+	case Quoted:
+		table = string(v)
+	default:
 		t, found := r.refs[rowStructPtr]
 		if !found {
 			panic("row structure pointer needs to be added first with AddTableAlias")
 		}
 
-		table = t
+		table = string(t)
 	}
 
 	return func(o *Options) {
 		o.PrepareColumn = func(col string) string {
-			return r.Q(table, col)
+			return string(r.Q(table, col))
 		}
 	}
 }
@@ -97,7 +103,7 @@ func (r *Referencer) AddTableAlias(rowStructPtr interface{}, alias string) {
 	}
 
 	if r.refs == nil {
-		r.refs = make(map[interface{}]string, len(f)+1)
+		r.refs = make(map[interface{}]Quoted, len(f)+1)
 	}
 
 	if r.columnNames == nil {
@@ -118,13 +124,13 @@ func (r *Referencer) AddTableAlias(rowStructPtr interface{}, alias string) {
 		var col string
 
 		if alias == "" {
-			col = r.Q(fieldName)
+			col = string(r.Q(fieldName))
 		} else {
-			col = r.Q(alias, fieldName)
+			col = string(r.Q(alias, fieldName))
 		}
 
 		columns = append(columns, col)
-		r.refs[ptr] = col
+		r.refs[ptr] = Quoted(col)
 		r.columnNames[ptr] = fieldName
 	}
 
@@ -133,13 +139,16 @@ func (r *Referencer) AddTableAlias(rowStructPtr interface{}, alias string) {
 	r.structColumns[rowStructPtr] = columns
 }
 
+// Quoted is a string that can be interpolated into an SQL statement as is.
+type Quoted string
+
 // Q quotes identifier.
-func (r *Referencer) Q(tableAndColumn ...string) string {
+func (r *Referencer) Q(tableAndColumn ...string) Quoted {
 	if r.IdentifierQuoter == nil {
-		return QuoteNoop(tableAndColumn...)
+		return Quoted(QuoteNoop(tableAndColumn...))
 	}
 
-	return r.IdentifierQuoter(tableAndColumn...)
+	return Quoted(r.IdentifierQuoter(tableAndColumn...))
 }
 
 // Ref returns reference string for struct or field pointer that was previously added with AddTableAlias.
@@ -147,7 +156,7 @@ func (r *Referencer) Q(tableAndColumn ...string) string {
 // It panics if pointer is unknown.
 func (r *Referencer) Ref(ptr interface{}) string {
 	if ref, found := r.refs[ptr]; found {
-		return ref
+		return string(ref)
 	}
 
 	panic(errUnknownFieldOrRow)
@@ -172,6 +181,12 @@ func (r *Referencer) Fmt(format string, ptrs ...interface{}) string {
 	args := make([]interface{}, 0, len(ptrs))
 
 	for i, fieldPtr := range ptrs {
+		if q, ok := fieldPtr.(Quoted); ok {
+			args = append(args, string(q))
+
+			continue
+		}
+
 		if ref, found := r.refs[fieldPtr]; found {
 			args = append(args, ref)
 		} else {
