@@ -35,8 +35,7 @@ func ExampleReferencer_Fmt() {
 	qb := squirrel.StatementBuilder.Select(rf.Fmt("%s, %s", &dr.ManagerID, &dr.EmployeeID)).
 		From(rf.Fmt("%s AS %s", rf.Q("users"), manager)).
 		InnerJoin(rf.Fmt("%s AS %s ON %s = %s AND %s = %s",
-			rf.Q("direct_reports"),
-			dr,
+			rf.Q("direct_reports"), dr,
 			&dr.ManagerID, &manager.ID,
 			&dr.EmployeeID, &employee.ID)).
 		Where(rf.Fmt("%s = %s", &manager.LastName, &employee.LastName)).
