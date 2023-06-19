@@ -176,7 +176,7 @@ func (r *Referencer) Col(ptr interface{}) string {
 
 // Fmt formats according to a format specified replacing ptrs with their reference strings where possible.
 //
-// It panics if pointer is unknown.
+// It panics if pointer is unknown or is not a Quoted string.
 func (r *Referencer) Fmt(format string, ptrs ...interface{}) string {
 	args := make([]interface{}, 0, len(ptrs))
 
