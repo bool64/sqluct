@@ -6,6 +6,8 @@ package sqluct
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
+	"encoding/json"
 	"fmt"
 	"reflect"
 
@@ -152,4 +154,32 @@ func (s *StorageOf[V]) InsertRows(ctx context.Context, rows []V, options ...func
 	}
 
 	return res, nil
+}
+
+// JSON is a generic container to a serialized db column.
+type JSON[V any] struct {
+	Val V
+}
+
+// Scan decodes json value from a db column.
+func (s *JSON[V]) Scan(src any) error {
+	if src == nil {
+		return nil
+	}
+
+	switch v := src.(type) {
+	case []byte:
+		return json.Unmarshal(v, &s.Val)
+	case string:
+		return json.Unmarshal([]byte(v), &s.Val)
+	default:
+		return fmt.Errorf("unsupported type %T", src) //nolint:goerr113
+	}
+}
+
+// Value encodes value as json for a db column.
+func (s JSON[V]) Value() (driver.Value, error) {
+	j, err := json.Marshal(s.Val)
+
+	return string(j), err
 }
