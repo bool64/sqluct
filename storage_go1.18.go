@@ -161,6 +161,16 @@ type JSON[V any] struct {
 	Val V
 }
 
+// UnmarshalJSON decodes JSON into container.
+func (s *JSON[V]) UnmarshalJSON(bytes []byte) error {
+	return json.Unmarshal(bytes, &s.Val)
+}
+
+// MarshalJSON encodes container value as JSON.
+func (s JSON[V]) MarshalJSON() ([]byte, error) {
+	return json.Marshal(s.Val)
+}
+
 // Scan decodes json value from a db column.
 func (s *JSON[V]) Scan(src any) error {
 	if src == nil {
