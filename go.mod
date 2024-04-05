@@ -3,10 +3,10 @@ module github.com/bool64/sqluct
 go 1.18
 
 require (
-	github.com/DATA-DOG/go-sqlmock v1.5.0
+	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/bool64/ctxd v1.2.1
-	github.com/bool64/dev v0.2.31
+	github.com/bool64/dev v0.2.34
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/stretchr/testify v1.8.2
 )

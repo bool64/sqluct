@@ -23,7 +23,7 @@ func TestList(t *testing.T) {
 	}
 
 	db, mock, err := sqlmock.New()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	traceStarted := false
 	traceFinished := false
@@ -38,7 +38,7 @@ func TestList(t *testing.T) {
 		return ctx, func(err error) {
 			traceFinished = true
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 	}
 
@@ -53,12 +53,13 @@ func TestList(t *testing.T) {
 	mock.ExpectQuery("SELECT one, two, three FROM table").WillReturnRows(mockedRows)
 
 	rows, err := sqluct.List[row](ctx, st, qb)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	i := 0
 
 	for _, item := range rows {
 		assert.Equal(t, row{One: i, Two: 2 * i, Three: 3 * i}, item)
+
 		i++
 	}
 
@@ -75,7 +76,7 @@ func TestGet(t *testing.T) {
 	}
 
 	db, mock, err := sqlmock.New()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	st := sqluct.NewStorage(sqlx.NewDb(db, "mock"))
 
@@ -87,7 +88,7 @@ func TestGet(t *testing.T) {
 	mock.ExpectQuery("SELECT one, two, three FROM table").WillReturnRows(mockedRows)
 
 	item, err := sqluct.Get[row](ctx, st, qb)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, row{One: 1, Two: 2, Three: 3}, item)
 }
@@ -106,7 +107,7 @@ func TestJSON_Value(t *testing.T) {
 	}
 
 	db, mock, err := sqlmock.New()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	st := sqluct.NewStorage(sqlx.NewDb(db, "mock"))
 
@@ -118,7 +119,7 @@ func TestJSON_Value(t *testing.T) {
 	mock.ExpectQuery("SELECT one, two, three, four FROM table").WillReturnRows(mockedRows)
 
 	item, err := sqluct.Get[row](ctx, st, qb)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expected := row{One: 1, Two: 2, Three: 3}
 	expected.Four.Val = nested{A: 123, B: true}

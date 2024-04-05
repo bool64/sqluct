@@ -6,6 +6,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/bool64/sqluct"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestReferencer_Fmt(t *testing.T) {
@@ -46,7 +47,7 @@ func TestReferencer_Fmt(t *testing.T) {
 		Where(squirrel.NotEq(m.WhereEq(User{FirstName: "Sergey", LastName: "Brin"}, rf.ColumnsOf("manager"))))
 
 	stmt, args, err := qb.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, `SELECT dr.manager_id, dr.employee_id `+
 		`FROM users AS manager `+
 		`INNER JOIN direct_reports AS dr ON dr.manager_id = manager.id AND dr.employee_id = employee.id `+

@@ -2,7 +2,7 @@ package sqluct_test
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"testing"
 
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
@@ -15,7 +15,7 @@ import (
 
 func TestStorage_InTx_FailToStart(t *testing.T) {
 	db, mock, err := sqlmock.New()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	type ctxKey struct{}
 
@@ -27,38 +27,38 @@ func TestStorage_InTx_FailToStart(t *testing.T) {
 		errReceived = true
 
 		assert.Equal(t, "a", ctx.Value(ctxKey{}))
-		assert.EqualError(t, err, "failed to begin tx: begin error")
+		require.EqualError(t, err, "failed to begin tx: begin error")
 	}
 
-	mock.ExpectBegin().WillReturnError(fmt.Errorf("begin error"))
+	mock.ExpectBegin().WillReturnError(errors.New("begin error"))
 
 	err = st.InTx(ctx, nil)
 
-	assert.EqualError(t, err, "failed to begin tx: begin error")
-	assert.NoError(t, mock.ExpectationsWereMet())
+	require.EqualError(t, err, "failed to begin tx: begin error")
+	require.NoError(t, mock.ExpectationsWereMet())
 	assert.True(t, errReceived)
 }
 
 func TestStorage_InTx_Success(t *testing.T) {
 	db, mock, err := sqlmock.New()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	st := sqluct.NewStorage(sqlx.NewDb(db, "mock"))
 
 	mock.ExpectBegin()
 	mock.ExpectCommit()
 
-	err = st.InTx(context.TODO(), func(ctx context.Context) error {
+	err = st.InTx(context.TODO(), func(_ context.Context) error {
 		return nil
 	})
 
-	assert.Nil(t, err)
-	assert.NoError(t, mock.ExpectationsWereMet())
+	require.NoError(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
 }
 
 func TestStorage_InTx_ReuseTx(t *testing.T) {
 	db, mock, err := sqlmock.New()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	dbx := sqlx.NewDb(db, "mock")
 	st := sqluct.NewStorage(dbx)
@@ -68,26 +68,26 @@ func TestStorage_InTx_ReuseTx(t *testing.T) {
 
 	// Manually start a transaction.
 	tx, err := dbx.BeginTxx(context.TODO(), nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	ctx := sqluct.TxToContext(context.TODO(), tx)
 	counter := 0
 
 	// Start using transaction.
-	err = st.InTx(ctx, func(ctx context.Context) error {
+	err = st.InTx(ctx, func(_ context.Context) error {
 		counter++
 
 		return nil
 	})
 
 	assert.Equal(t, 1, counter)
-	assert.Nil(t, err)
-	assert.NoError(t, mock.ExpectationsWereMet())
+	require.NoError(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
 }
 
 func TestStorage_InTx_RollbackOnError(t *testing.T) {
 	db, mock, err := sqlmock.New()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	st := sqluct.NewStorage(sqlx.NewDb(db, "mock"))
 
@@ -95,48 +95,48 @@ func TestStorage_InTx_RollbackOnError(t *testing.T) {
 	mock.ExpectRollback()
 
 	// Start using transaction.
-	err = st.InTx(context.TODO(), func(ctx context.Context) error {
-		return fmt.Errorf("error")
+	err = st.InTx(context.TODO(), func(_ context.Context) error {
+		return errors.New("error")
 	})
 
-	assert.EqualError(t, err, "error")
-	assert.NoError(t, mock.ExpectationsWereMet())
+	require.EqualError(t, err, "error")
+	require.NoError(t, mock.ExpectationsWereMet())
 }
 
 func TestStorage_InTx_ErrorOnRollback(t *testing.T) {
 	db, mock, err := sqlmock.New()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	st := sqluct.NewStorage(sqlx.NewDb(db, "mock"))
 
 	mock.ExpectBegin()
-	mock.ExpectRollback().WillReturnError(fmt.Errorf("rollback error"))
+	mock.ExpectRollback().WillReturnError(errors.New("rollback error"))
 
 	// Start using transaction.
-	err = st.InTx(context.TODO(), func(ctx context.Context) error {
-		return fmt.Errorf("error")
+	err = st.InTx(context.TODO(), func(_ context.Context) error {
+		return errors.New("error")
 	})
 
-	assert.EqualError(t, err, "failed to rollback: rollback error")
-	assert.NoError(t, mock.ExpectationsWereMet())
+	require.EqualError(t, err, "failed to rollback: rollback error")
+	require.NoError(t, mock.ExpectationsWereMet())
 }
 
 func TestStorage_InTx_FailToCommit(t *testing.T) {
 	db, mock, err := sqlmock.New()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	st := sqluct.NewStorage(sqlx.NewDb(db, "mock"))
 
 	mock.ExpectBegin()
-	mock.ExpectCommit().WillReturnError(fmt.Errorf("commit error"))
+	mock.ExpectCommit().WillReturnError(errors.New("commit error"))
 
 	// Start using transaction.
-	err = st.InTx(context.TODO(), func(ctx context.Context) error {
+	err = st.InTx(context.TODO(), func(_ context.Context) error {
 		return nil
 	})
 
-	assert.EqualError(t, err, "failed to commit: commit error")
-	assert.NoError(t, mock.ExpectationsWereMet())
+	require.EqualError(t, err, "failed to commit: commit error")
+	require.NoError(t, mock.ExpectationsWereMet())
 }
 
 func TestStorage_SelectContext_slice(t *testing.T) {
@@ -147,7 +147,7 @@ func TestStorage_SelectContext_slice(t *testing.T) {
 	}
 
 	db, mock, err := sqlmock.New()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	traceStarted := false
 	traceFinished := false
@@ -162,7 +162,7 @@ func TestStorage_SelectContext_slice(t *testing.T) {
 		return ctx, func(err error) {
 			traceFinished = true
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 	}
 
@@ -178,12 +178,13 @@ func TestStorage_SelectContext_slice(t *testing.T) {
 	mock.ExpectQuery("SELECT one, two, three FROM table").WillReturnRows(mockedRows)
 
 	err = st.Select(ctx, qb, &rows)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	i := 0
 
 	for _, item := range rows {
 		assert.Equal(t, row{One: i, Two: 2 * i, Three: 3 * i}, item)
+
 		i++
 	}
 
@@ -200,7 +201,7 @@ func TestStorage_SelectContext_row(t *testing.T) {
 	}
 
 	db, mock, err := sqlmock.New()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	st := sqluct.NewStorage(sqlx.NewDb(db, "mock"))
 
@@ -215,7 +216,7 @@ func TestStorage_SelectContext_row(t *testing.T) {
 	mock.ExpectQuery("SELECT one, two, three FROM table").WillReturnRows(mockedRows)
 
 	err = st.Select(ctx, qb, &item)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, row{One: 1, Two: 2, Three: 3}, item)
 }
@@ -237,7 +238,7 @@ func TestStorage_ExecContext(t *testing.T) {
 		return ctx, func(err error) {
 			traceFinished = true
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 	}
 
@@ -246,7 +247,7 @@ func TestStorage_ExecContext(t *testing.T) {
 	qb := st.DeleteStmt("table")
 
 	_, err = st.Exec(context.Background(), qb)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, traceStarted)
 	assert.True(t, traceFinished)
 }
@@ -263,8 +264,8 @@ func TestStorage_DeleteStmt_backticks(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	_, err = st.DeleteStmt("table").Exec()
-	assert.NoError(t, err)
-	assert.NoError(t, mock.ExpectationsWereMet())
+	require.NoError(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
 }
 
 func TestStorage_InsertStmt_backticks(t *testing.T) {
@@ -282,8 +283,8 @@ func TestStorage_InsertStmt_backticks(t *testing.T) {
 		OrderID int `db:"order_id"`
 		Amount  int `db:"amount"`
 	}{10, 20}).Exec()
-	assert.NoError(t, err)
-	assert.NoError(t, mock.ExpectationsWereMet())
+	require.NoError(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
 }
 
 func TestStorage_UpdateStmt(t *testing.T) {
@@ -295,8 +296,8 @@ func TestStorage_UpdateStmt(t *testing.T) {
 		OrderID int `db:"order_id"`
 		Amount  int `db:"amount"`
 	}{10, 20}).ToSql()
-	assert.NoError(t, err)
-	assert.Equal(t, query, "UPDATE table SET order_id = $1, amount = $2")
+	require.NoError(t, err)
+	assert.Equal(t, "UPDATE table SET order_id = $1, amount = $2", query)
 	assert.Equal(t, []interface{}{10, 20}, args)
 }
 
@@ -310,8 +311,8 @@ func TestStorage_UpdateStmt_ansi(t *testing.T) {
 		OrderID int `db:"order_id"`
 		Amount  int `db:"amount"`
 	}{10, 20}).ToSql()
-	assert.NoError(t, err)
-	assert.Equal(t, query, `UPDATE "table" SET "order_id" = $1, "amount" = $2`)
+	require.NoError(t, err)
+	assert.Equal(t, `UPDATE "table" SET "order_id" = $1, "amount" = $2`, query)
 	assert.Equal(t, []interface{}{10, 20}, args)
 }
 
@@ -322,8 +323,8 @@ func TestStorage_SelectStmt(t *testing.T) {
 		OrderID int `db:"order_id"`
 		Amount  int `db:"amount"`
 	}{}).ToSql()
-	assert.NoError(t, err)
-	assert.Equal(t, query, "SELECT order_id, amount FROM table")
+	require.NoError(t, err)
+	assert.Equal(t, "SELECT order_id, amount FROM table", query)
 }
 
 func TestStorage_SelectStmt_backticks(t *testing.T) {
@@ -334,13 +335,13 @@ func TestStorage_SelectStmt_backticks(t *testing.T) {
 		OrderID int `db:"order_id"`
 		Amount  int `db:"amount"`
 	}{}).ToSql()
-	assert.NoError(t, err)
-	assert.Equal(t, query, "SELECT `order_id`, `amount` FROM `table`")
+	require.NoError(t, err)
+	assert.Equal(t, "SELECT `order_id`, `amount` FROM `table`", query)
 }
 
 func TestStorage_DB(t *testing.T) {
 	db, _, err := sqlmock.New()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	dbx := sqlx.NewDb(db, "test")
 	st := sqluct.NewStorage(dbx)
@@ -352,12 +353,12 @@ func TestStmt_ToSql(t *testing.T) {
 	s, a, err := sqluct.Stmt("SELECT * FROM foo WHERE id=? AND name=?", 1, "bar").ToSql()
 	assert.Equal(t, "SELECT * FROM foo WHERE id=? AND name=?", s)
 	assert.Equal(t, []interface{}{1, "bar"}, a)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestPlain_ToSql(t *testing.T) {
 	s, a, err := sqluct.Plain("SELECT * FROM foo WHERE id=1 AND name='bar'").ToSql()
 	assert.Equal(t, "SELECT * FROM foo WHERE id=1 AND name='bar'", s)
 	assert.Nil(t, a)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
