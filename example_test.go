@@ -78,7 +78,7 @@ func ExampleStorage_InTx() {
 		ctx context.Context
 	)
 
-	err := s.InTx(ctx, func(ctx context.Context) error {
+	err := s.InTx(ctx, func(_ context.Context) error {
 		return nil
 	})
 	if err != nil {

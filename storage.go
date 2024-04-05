@@ -138,8 +138,8 @@ func (s *Storage) InTx(ctx context.Context, fn func(context.Context) error) (err
 		ctx = TxToContext(ctx, tx)
 	} else {
 		// Do nothing because parent tx is still running and
-		// this is not the beginner so it can't be the finisher.
-		finish = func(ctx context.Context, err error) error {
+		// this is not the beginner, so it can't be the finisher.
+		finish = func(_ context.Context, err error) error {
 			return err
 		}
 	}

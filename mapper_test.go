@@ -7,6 +7,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/bool64/sqluct"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type (
@@ -48,7 +49,7 @@ func TestInsertValue(t *testing.T) {
 	sm := sqluct.Mapper{}
 	q := sm.Insert(ps.Insert("sample"), z)
 	query, args, err := q.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "INSERT INTO sample (a,meta,e,b,c) VALUES ($1,$2,$3,$4,$5)", query)
 	assert.Equal(t, []interface{}{1, AnotherRow{SampleEmbedded: SampleEmbedded{B: 0, C: ""}, D: ""}, "e!", 2.2, "3"}, args)
 }
@@ -88,7 +89,7 @@ func TestInsertValue_omitempty(t *testing.T) {
 	sm := sqluct.Mapper{}
 	q := sm.Insert(ps.Insert("sample"), z)
 	query, args, err := q.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// a and e are missing for `omitempty`
 	assert.Equal(t, "INSERT INTO sample (meta,b,c) VALUES ($1,$2,$3)", query)
 	assert.Equal(t, []interface{}{AnotherRow{SampleEmbedded: SampleEmbedded{B: 0, C: ""}, D: ""}, 0.0, ""}, args)
@@ -120,7 +121,7 @@ func TestInsertValue_IgnoreOmitEmpty(t *testing.T) {
 	sm := sqluct.Mapper{}
 	q := sm.Insert(ps.Insert("sample"), z, sqluct.IgnoreOmitEmpty)
 	query, args, err := q.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// a and e are missing for `omitempty`
 	assert.Equal(t, "INSERT INTO sample (a,meta,e,b,c) VALUES ($1,$2,$3,$4,$5)", query)
 	assert.Equal(t, []interface{}{0, AnotherRow{SampleEmbedded: SampleEmbedded{B: 0, C: ""}, D: ""}, "", 0.0, ""}, args)
@@ -174,7 +175,7 @@ func TestInsertValueSlice_heterogeneous(t *testing.T) {
 	assert.Equal(t, q, sm.Insert(q, nil))
 	q = sm.Insert(q, z)
 	query, args, err := q.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "INSERT INTO sample (a,meta,e,b,c) VALUES ($1,$2,$3,$4,$5),($6,$7,$8,$9,$10)", query)
 	assert.Equal(t, []interface{}{
 		0,
@@ -216,7 +217,7 @@ func TestInsertValueSlice_homogeneous(t *testing.T) {
 	assert.Equal(t, q, sm.Insert(q, nil))
 	q = sm.Insert(q, z)
 	query, args, err := q.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "INSERT INTO sample (a,meta,e,b,c) VALUES ($1,$2,$3,$4,$5),($6,$7,$8,$9,$10)", query)
 	assert.Equal(t, []interface{}{
 		1,
@@ -338,7 +339,7 @@ func TestInsertValueSlicePtr(t *testing.T) {
 	sm := sqluct.Mapper{}
 	q := sm.Insert(ps.Insert("sample"), z)
 	query, args, err := q.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "INSERT INTO sample (a,meta,e,b,c) VALUES ($1,$2,$3,$4,$5),($6,$7,$8,$9,$10)", query)
 	assert.Equal(t, []interface{}{
 		1,
@@ -369,7 +370,7 @@ func TestMapper_Update(t *testing.T) {
 	q := sm.Update(ps.Update("sample"), z)
 	q = q.Where(sm.WhereEq(condition))
 	query, args, err := q.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "UPDATE sample SET b = $1, c = $2 WHERE a = $3 AND b IN ($4,$5)", query)
 	assert.Equal(t, []interface{}{2.2, "3", 1, "b1", "b2"}, args)
 }
@@ -382,7 +383,7 @@ func TestMapper_Select_struct(t *testing.T) {
 	q = q.From("sample")
 
 	query, args, err := q.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT a, meta, e, b, c FROM sample", query)
 	assert.Equal(t, []interface{}(nil), args)
 }
@@ -421,7 +422,7 @@ func TestMapper_Select_slice(t *testing.T) {
 	q = q.Where(sm.WhereEq(condition))
 	q = q.From("sample")
 	query, args, err := q.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT b, c FROM sample WHERE a = $1 AND b IN ($2,$3)", query)
 	assert.Equal(t, []interface{}{1, "b1", "b2"}, args)
 }
@@ -453,7 +454,7 @@ func TestMapper_WhereEq(t *testing.T) {
 	q = q.Where(sm.WhereEq(filter, sqluct.SkipZeroValues))
 
 	query, args, err := q.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT campaign, variation, fk_customer, created_at FROM sample WHERE fk_customer = $1", query)
 	assert.Equal(t, []interface{}{uint64(123)}, args)
 
@@ -462,7 +463,7 @@ func TestMapper_WhereEq(t *testing.T) {
 	q = sm.Select(q, rows)
 	q = q.Where(sm.WhereEq(filter, sqluct.SkipZeroValues))
 	query, args, err = q.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT campaign, variation, fk_customer, created_at FROM sample WHERE campaign IN ($1,$2) AND fk_customer = $3", query)
 	assert.Equal(t, []interface{}{"k1", "k2", uint64(123)}, args)
 
@@ -471,7 +472,7 @@ func TestMapper_WhereEq(t *testing.T) {
 	q = sm.Select(q, rows)
 	q = q.Where(sm.WhereEq(filter, sqluct.SkipZeroValues))
 	query, args, err = q.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT campaign, variation, fk_customer, created_at FROM sample WHERE campaign IN ($1,$2)", query)
 	assert.Equal(t, []interface{}{"k1", "k2"}, args)
 
@@ -480,7 +481,7 @@ func TestMapper_WhereEq(t *testing.T) {
 	q = sm.Select(q, rows)
 	q = q.Where(sm.WhereEq(filter, sqluct.SkipZeroValues))
 	query, args, err = q.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT campaign, variation, fk_customer, created_at FROM sample WHERE (1=1)", query)
 	assert.Equal(t, []interface{}(nil), args)
 }
@@ -499,7 +500,7 @@ func TestMapper_Delete(t *testing.T) {
 	sm := sqluct.Mapper{}
 	q := ps.Delete("sample").Where(sm.WhereEq(condition, sqluct.SkipZeroValues))
 	query, args, err := q.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "DELETE FROM sample WHERE a = $1 AND b IN ($2,$3)", query)
 	assert.Equal(t, []interface{}{1, "b1", "b2"}, args)
 }
@@ -541,10 +542,11 @@ func TestMapper_FindColumnName(t *testing.T) {
 		t.Run("", func(t *testing.T) {
 			tagValue, err := sm.FindColumnName(tc.structPtr, tc.fieldPtr)
 			assert.Equal(t, tc.tagValue, tagValue)
+
 			if tc.err == "" {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			} else {
-				assert.EqualError(t, err, tc.err)
+				require.EqualError(t, err, tc.err)
 			}
 		})
 	}
@@ -628,6 +630,6 @@ func assertStatement(t *testing.T, s string, qb sqluct.ToSQL) {
 	t.Helper()
 
 	stmt, _, err := qb.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, s, stmt)
 }
