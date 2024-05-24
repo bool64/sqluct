@@ -93,6 +93,12 @@ func (s *StorageOf[V]) Get(ctx context.Context, qb ToSQL) (V, error) {
 
 // SelectStmt creates query statement with table name and row columns.
 func (s *StorageOf[V]) SelectStmt(options ...func(*Options)) squirrel.SelectBuilder {
+	if len(options) == 0 {
+		options = []func(*Options){
+			s.ColumnsOf(s.R),
+		}
+	}
+
 	return s.s.SelectStmt(s.tableName, s.R, options...)
 }
 
