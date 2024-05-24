@@ -1,6 +1,6 @@
 # Struct-based database access layer for Go
 
-[![Build Status](https://github.com/bool64/sqluct/workflows/test/badge.svg)](https://github.com/bool64/sqluct/actions?query=branch%3Amaster+workflow%3Atest)
+[![test-unit](https://github.com/bool64/sqluct/actions/workflows/test-unit.yml/badge.svg)](https://github.com/bool64/sqluct/actions/workflows/test-unit.yml)
 [![Coverage Status](https://codecov.io/gh/bool64/sqluct/branch/master/graph/badge.svg)](https://codecov.io/gh/bool64/sqluct)
 [![GoDevDoc](https://img.shields.io/badge/dev-doc-00ADD8?logo=go)](https://pkg.go.dev/github.com/bool64/sqluct)
 [![Time Tracker](https://wakatime.com/badge/github/bool64/sqluct.svg)](https://wakatime.com/badge/github/bool64/sqluct)
