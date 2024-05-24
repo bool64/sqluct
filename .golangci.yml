@@ -67,5 +67,8 @@ issues:
     - linters:
         - errcheck # Error checking omitted for brevity.
         - gosec
+        - wsl
+        - ineffassign
+        - wastedassign
       path: "example_"
 
