@@ -70,25 +70,25 @@ type Referencer struct {
 //
 // Argument is either a structure pointer or string alias.
 func (r *Referencer) ColumnsOf(rowStructPtr interface{}) func(o *Options) {
-	var table string
+	var table Quoted
 
 	switch v := rowStructPtr.(type) {
 	case string:
-		table = v
+		table = r.Q(v)
 	case Quoted:
-		table = string(v)
+		table = v
 	default:
 		t, found := r.refs[rowStructPtr]
 		if !found {
 			panic("row structure pointer needs to be added first with AddTableAlias")
 		}
 
-		table = string(t)
+		table = t
 	}
 
 	return func(o *Options) {
 		o.PrepareColumn = func(col string) string {
-			return string(r.Q(table, col))
+			return string(table + "." + r.Q(col))
 		}
 	}
 }

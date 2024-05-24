@@ -2,7 +2,9 @@ package sqluct_test
 
 import (
 	"context"
+	"database/sql/driver"
 	"errors"
+	"fmt"
 	"testing"
 
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
@@ -12,6 +14,59 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type (
+	dumpConnector struct{}
+	dumpDriver    struct{}
+	dumpConn      struct{}
+	dumpStmt      struct{ query string }
+)
+
+func (d dumpStmt) Close() error {
+	return nil
+}
+
+func (d dumpStmt) NumInput() int {
+	return -1
+}
+
+func (d dumpStmt) Exec(args []driver.Value) (driver.Result, error) {
+	fmt.Println("exec", d.query, args)
+
+	return nil, errors.New("skip")
+}
+
+func (d dumpStmt) Query(args []driver.Value) (driver.Rows, error) {
+	fmt.Println("query", d.query, args)
+
+	return nil, errors.New("skip")
+}
+
+func (d dumpConn) Prepare(query string) (driver.Stmt, error) {
+	return dumpStmt{query: query}, nil
+}
+
+func (d dumpConn) Close() error {
+	return nil
+}
+
+func (d dumpConn) Begin() (driver.Tx, error) {
+	return nil, nil
+}
+
+func (d dumpDriver) Open(name string) (driver.Conn, error) {
+	fmt.Println("open", name)
+
+	return dumpConn{}, nil
+}
+
+func (d dumpConnector) Connect(_ context.Context) (driver.Conn, error) {
+	return dumpConn{}, nil
+}
+
+func (d dumpConnector) Driver() driver.Driver {
+	return dumpDriver{}
+}
 
 func TestStorage_InTx_FailToStart(t *testing.T) {
 	db, mock, err := sqlmock.New()
