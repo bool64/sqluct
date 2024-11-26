@@ -207,6 +207,7 @@ func (s *Storage) Exec(ctx context.Context, qb ToSQL) (res sql.Result, err error
 
 // Query queries database and returns raw result.
 //
+// You must close the rows after use to avoid resource leak.
 // Select is recommended to use instead of Query.
 func (s *Storage) Query(ctx context.Context, qb ToSQL) (*sqlx.Rows, error) {
 	query, args, err := qb.ToSql()
@@ -228,7 +229,7 @@ func (s *Storage) Query(ctx context.Context, qb ToSQL) (*sqlx.Rows, error) {
 		queryer = s.db
 	}
 
-	rows, err := queryer.QueryxContext(ctx, query, args...)
+	rows, err := queryer.QueryxContext(ctx, query, args...) //nolint:sqlclosecheck // Caller closes rows.
 	if err != nil {
 		return nil, s.error(ctx, err)
 	}

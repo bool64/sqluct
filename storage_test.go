@@ -51,7 +51,7 @@ func (d dumpConn) Close() error {
 }
 
 func (d dumpConn) Begin() (driver.Tx, error) {
-	return nil, nil
+	return nil, nil //nolint:nilnil
 }
 
 func (d dumpDriver) Open(name string) (driver.Conn, error) {
@@ -230,6 +230,7 @@ func TestStorage_SelectContext_slice(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		mockedRows.AddRow(i, 2*i, 3*i)
 	}
+
 	mock.ExpectQuery("SELECT one, two, three FROM table").WillReturnRows(mockedRows)
 
 	err = st.Select(ctx, qb, &rows)

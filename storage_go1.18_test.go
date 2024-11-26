@@ -50,6 +50,7 @@ func TestList(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		mockedRows.AddRow(i, 2*i, 3*i)
 	}
+
 	mock.ExpectQuery("SELECT one, two, three FROM table").WillReturnRows(mockedRows)
 
 	rows, err := sqluct.List[row](ctx, st, qb)
