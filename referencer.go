@@ -94,6 +94,7 @@ func (r *Referencer) ColumnsOf(rowStructPtr interface{}) func(o *Options) {
 	}
 }
 
+// QuotedNoTable is a container of field pointer that should be referenced without table.
 type QuotedNoTable struct {
 	ptr interface{}
 }
@@ -190,11 +191,12 @@ func (r *Referencer) Q(tableAndColumn ...string) Quoted {
 //
 // It panics if pointer is unknown.
 func (r *Referencer) Ref(ptr interface{}) string {
-	if s, err := r.ref(ptr); err != nil {
+	s, err := r.ref(ptr)
+	if err != nil {
 		panic(err)
-	} else {
-		return s
 	}
+
+	return s
 }
 
 func (r *Referencer) ref(ptr interface{}) (string, error) {
