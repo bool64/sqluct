@@ -258,3 +258,27 @@ func BenchmarkReferencer_Fmt_raw(b *testing.B) {
 		}
 	}
 }
+
+func TestNoTable(t *testing.T) {
+	ref := sqluct.Referencer{}
+	ref.Mapper = &sqluct.Mapper{Dialect: sqluct.DialectSQLite3}
+	ref.IdentifierQuoter = sqluct.QuoteBackticks
+
+	type User struct {
+		ID        int    `db:"id"`
+		FirstName string `db:"first_name"`
+		LastName  string `db:"last_name"`
+	}
+
+	row := &User{}
+
+	ref.AddTableAlias(row, "users")
+
+	expr := ref.Fmt("ON CONFLICT(%s) DO UPDATE SET %s = excluded.%s, %s = excluded.%s",
+		sqluct.NoTableAll(&row.ID, &row.FirstName, &row.FirstName, &row.LastName, &row.LastName)...)
+
+	assert.Equal(t, "ON CONFLICT(`id`) DO UPDATE SET `first_name` = excluded.`first_name`, `last_name` = excluded.`last_name`", expr)
+
+	assert.Equal(t, "`first_name`", ref.Ref(sqluct.NoTable(&row.FirstName)))
+	assert.Equal(t, "`users`.`first_name`", ref.Ref(&row.FirstName))
+}
