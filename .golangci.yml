@@ -22,47 +22,40 @@ linters:
   disable:
     - musttag
     - lll
-    - maligned
     - gochecknoglobals
     - gomnd
     - wrapcheck
     - paralleltest
     - forbidigo
-    - exhaustivestruct
-    - interfacer # deprecated
     - forcetypeassert
-    - scopelint # deprecated
-    - ifshort # too many false positives
-    - golint # deprecated
     - varnamelen
     - tagliatelle
     - errname
     - ireturn
     - exhaustruct
     - nonamedreturns
-    - nosnakecase
-    - structcheck
-    - varcheck
-    - deadcode
     - testableexamples
     - dupword
     - depguard
     - tagalign
+    - execinquery
+    - mnd
+    - testifylint
 
 issues:
   exclude-use-default: false
   exclude-rules:
     - linters:
         - gomnd
+        - mnd
         - goconst
-        - goerr113
+        - err113
         - noctx
         - funlen
         - dupl
         - structcheck
         - unused
         - unparam
-        - nosnakecase
       path: "_test.go"
     - linters:
         - errcheck # Error checking omitted for brevity.
@@ -71,4 +64,7 @@ issues:
         - ineffassign
         - wastedassign
       path: "example_"
+    - linters:
+        - revive
+      text: "unused-parameter: parameter"
 
