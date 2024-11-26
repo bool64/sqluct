@@ -225,7 +225,7 @@ func BenchmarkReferencer_Fmt_lite(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		// Find direct reports that share same last name and manager is not named John.
-		qb := squirrel.StatementBuilder.Select(rf.Fmt("%s, %s", &dr.ManagerID, &dr.EmployeeID)).
+		qb := squirrel.StatementBuilder.Select(rf.Refs(&dr.ManagerID, &dr.EmployeeID)...).
 			From(rf.Fmt("%s AS %s", rf.Q("users"), manager)).
 			InnerJoin(rf.Fmt("%s AS %s ON %s = %s AND %s = %s",
 				rf.Q("direct_reports"), dr,

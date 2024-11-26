@@ -190,6 +190,18 @@ func (r *Referencer) Q(tableAndColumn ...string) Quoted {
 //
 // It panics if pointer is unknown.
 func (r *Referencer) Ref(ptr interface{}) string {
+	if s, err := r.ref(ptr); err != nil {
+		panic(err)
+	} else {
+		return s
+	}
+}
+
+func (r *Referencer) ref(ptr interface{}) (string, error) {
+	if q, ok := ptr.(Quoted); ok {
+		return string(q), nil
+	}
+
 	refs := r.refs
 
 	if nt, ok := ptr.(QuotedNoTable); ok {
@@ -198,10 +210,28 @@ func (r *Referencer) Ref(ptr interface{}) string {
 	}
 
 	if ref, found := refs[ptr]; found {
-		return string(ref)
+		return string(ref), nil
 	}
 
-	panic(errUnknownFieldOrRow)
+	return "", errUnknownFieldOrRow
+}
+
+// Refs returns reference strings for multiple field pointers.
+//
+// It panics if pointer is unknown.
+func (r *Referencer) Refs(ptrs ...interface{}) []string {
+	args := make([]string, 0, len(ptrs))
+
+	for i, fieldPtr := range ptrs {
+		ref, err := r.ref(fieldPtr)
+		if err != nil {
+			panic(fmt.Errorf("%w at position %d", err, i))
+		}
+
+		args = append(args, ref)
+	}
+
+	return args
 }
 
 // Col returns unescaped column name for field pointer that was previously added with AddTableAlias.
@@ -223,24 +253,12 @@ func (r *Referencer) Fmt(format string, ptrs ...interface{}) string {
 	args := make([]interface{}, 0, len(ptrs))
 
 	for i, fieldPtr := range ptrs {
-		if q, ok := fieldPtr.(Quoted); ok {
-			args = append(args, string(q))
-
-			continue
+		ref, err := r.ref(fieldPtr)
+		if err != nil {
+			panic(fmt.Errorf("%w at position %d", err, i))
 		}
 
-		refs := r.refs
-
-		if nt, ok := fieldPtr.(QuotedNoTable); ok {
-			fieldPtr = nt.ptr
-			refs = r.quotedCols
-		}
-
-		if ref, found := refs[fieldPtr]; found {
-			args = append(args, ref)
-		} else {
-			panic(fmt.Errorf("%w at position %d", errUnknownFieldOrRow, i))
-		}
+		args = append(args, ref)
 	}
 
 	return fmt.Sprintf(format, args...)
