@@ -133,6 +133,12 @@ func TestQuoteBackticks(t *testing.T) {
 	assert.Equal(t, "`spacy id`.`back``ticky`.`quo\"ty`", sqluct.QuoteBackticks("spacy id", "back`ticky", `quo"ty`))
 }
 
+func TestQuoteRequiredBackticks(t *testing.T) {
+	assert.Equal(t, "one.two", sqluct.QuoteRequiredBackticks("one", "two"))
+	assert.Equal(t, "", sqluct.QuoteRequiredBackticks())
+	assert.Equal(t, "`spacy id`.`back``ticky`.`quo\"ty`.simple", sqluct.QuoteRequiredBackticks("spacy id", "back`ticky", `quo"ty`, "simple"))
+}
+
 func TestQuoteANSI(t *testing.T) {
 	assert.Equal(t, `"one"."two"`, sqluct.QuoteANSI("one", "two"))
 	assert.Equal(t, "", sqluct.QuoteANSI())
