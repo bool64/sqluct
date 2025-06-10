@@ -46,6 +46,54 @@ func QuoteBackticks(tableAndColumn ...string) string {
 	return res.String()
 }
 
+// QuoteRequiredBackticks quotes symbol names that need quoting with backticks.
+//
+// Suitable for MySQL, SQLite statements.
+// See also https://dev.mysql.com/doc/refman/8.4/en/identifiers.html.
+func QuoteRequiredBackticks(tableAndColumn ...string) string {
+	res := strings.Builder{}
+
+	for i, item := range tableAndColumn {
+		if i != 0 {
+			res.WriteString(".")
+		}
+
+		needsQuote := false
+		onlyDigits := true
+
+		for _, r := range item {
+			if r >= '0' && r <= '9' {
+				continue
+			}
+
+			onlyDigits = false
+
+			if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || r == '$' || r == '_' {
+				continue
+			}
+
+			if r >= 0x0080 && r <= 0xFFFF {
+				continue
+			}
+
+			needsQuote = true
+		}
+
+		// Identifiers may begin with a digit but unless quoted may not consist solely of digits.
+		if !needsQuote && !onlyDigits {
+			res.WriteString(item)
+
+			continue
+		}
+
+		res.WriteString("`")
+		res.WriteString(strings.ReplaceAll(item, "`", "``"))
+		res.WriteString("`")
+	}
+
+	return res.String()
+}
+
 // QuoteNoop does not add any quotes to symbol names.
 //
 // Used in Referencer by default.

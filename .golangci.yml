@@ -12,18 +12,19 @@ linters-settings:
     threshold: 100
   misspell:
     locale: US
-  unused:
-    check-exported: false
   unparam:
     check-exported: true
 
 linters:
   enable-all: true
   disable:
+    - err113
+    - cyclop
     - musttag
+    - intrange
+    - copyloopvar
     - lll
     - gochecknoglobals
-    - gomnd
     - wrapcheck
     - paralleltest
     - forbidigo
@@ -38,31 +39,28 @@ linters:
     - dupword
     - depguard
     - tagalign
-    - execinquery
     - mnd
     - testifylint
+    - recvcheck
 
 issues:
   exclude-use-default: false
   exclude-rules:
     - linters:
-        - gomnd
+        - wsl
+        - wastedassign
+        - ineffassign
         - mnd
         - goconst
-        - err113
         - noctx
         - funlen
         - dupl
-        - structcheck
         - unused
         - unparam
       path: "_test.go"
     - linters:
         - errcheck # Error checking omitted for brevity.
         - gosec
-        - wsl
-        - ineffassign
-        - wastedassign
       path: "example_"
     - linters:
         - revive
