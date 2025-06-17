@@ -145,6 +145,12 @@ func TestQuoteANSI(t *testing.T) {
 	assert.Equal(t, `"spacy id"."back`+"`"+`ticky"."quo""ty"`, sqluct.QuoteANSI("spacy id", "back`ticky", `quo"ty`))
 }
 
+func TestQuoteRequiredANSI(t *testing.T) {
+	assert.Equal(t, `one.two`, sqluct.QuoteRequiredANSI("one", "two"))
+	assert.Equal(t, "", sqluct.QuoteRequiredANSI())
+	assert.Equal(t, `"spacy id"."back`+"`"+`ticky"."quo""ty".four`, sqluct.QuoteRequiredANSI("spacy id", "back`ticky", `quo"ty`, "four"))
+}
+
 // Three benchmarks show different scenarios:
 //  * full - referencer is recreated for each iteration, formatting is done in each iteration,
 //  * lite - referencer is reused in all iterations, formatting is done in each iteration,

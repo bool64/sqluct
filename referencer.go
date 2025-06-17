@@ -27,6 +27,55 @@ func QuoteANSI(tableAndColumn ...string) string {
 	return res.String()
 }
 
+// QuoteRequiredANSI quotes symbol names that need quoting with double quotes.
+//
+// Suitable for PostgreSQL, MySQL in ANSI SQL_MODE, SQLite statements.
+func QuoteRequiredANSI(tableAndColumn ...string) string {
+	res := strings.Builder{}
+
+	for i, item := range tableAndColumn {
+		if i != 0 {
+			res.WriteString(".")
+		}
+
+		needsQuote := false
+		onlyDigits := true
+
+		for i, r := range item {
+			if r >= '0' && r <= '9' {
+				if i == 0 {
+					needsQuote = true
+
+					break
+				}
+
+				continue
+			}
+
+			onlyDigits = false
+
+			if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || r == '$' || r == '_' {
+				continue
+			}
+
+			needsQuote = true
+		}
+
+		// Identifiers may begin with a digit but unless quoted may not consist solely of digits.
+		if !needsQuote && !onlyDigits {
+			res.WriteString(item)
+
+			continue
+		}
+
+		res.WriteString(`"`)
+		res.WriteString(strings.ReplaceAll(item, `"`, `""`))
+		res.WriteString(`"`)
+	}
+
+	return res.String()
+}
+
 // QuoteBackticks quotes symbol names with backticks.
 //
 // Suitable for MySQL, SQLite statements.
