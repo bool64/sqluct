@@ -110,8 +110,14 @@ func QuoteRequiredBackticks(tableAndColumn ...string) string {
 		needsQuote := false
 		onlyDigits := true
 
-		for _, r := range item {
+		for j, r := range item {
 			if r >= '0' && r <= '9' {
+				if j == 0 {
+					needsQuote = true
+
+					break
+				}
+
 				continue
 			}
 
