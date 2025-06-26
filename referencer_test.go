@@ -137,6 +137,7 @@ func TestQuoteRequiredBackticks(t *testing.T) {
 	assert.Equal(t, "one.two", sqluct.QuoteRequiredBackticks("one", "two"))
 	assert.Equal(t, "", sqluct.QuoteRequiredBackticks())
 	assert.Equal(t, "`spacy id`.`back``ticky`.`quo\"ty`.simple", sqluct.QuoteRequiredBackticks("spacy id", "back`ticky", `quo"ty`, "simple"))
+	assert.Equal(t, "`0625_dmdb`", sqluct.QuoteRequiredBackticks("0625_dmdb"))
 }
 
 func TestQuoteANSI(t *testing.T) {
@@ -149,6 +150,7 @@ func TestQuoteRequiredANSI(t *testing.T) {
 	assert.Equal(t, `one.two`, sqluct.QuoteRequiredANSI("one", "two"))
 	assert.Equal(t, "", sqluct.QuoteRequiredANSI())
 	assert.Equal(t, `"spacy id"."back`+"`"+`ticky"."quo""ty".four`, sqluct.QuoteRequiredANSI("spacy id", "back`ticky", `quo"ty`, "four"))
+	assert.Equal(t, `"0625_dmdb"`, sqluct.QuoteRequiredANSI("0625_dmdb"))
 }
 
 // Three benchmarks show different scenarios:
