@@ -1,9 +1,9 @@
 package sqluct_test
 
 import (
-	"github.com/bool64/sqluct"
 	"testing"
 
+	"github.com/bool64/sqluct"
 	"github.com/stretchr/testify/assert"
 )
 

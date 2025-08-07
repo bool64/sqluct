@@ -5,7 +5,7 @@ import "strings"
 // SplitStatements splits a string in multiple SQL statements separated by semicolon (';').
 //
 // Semicolons in comments and string literals are not treated as separators.
-func SplitStatements(s string) []string {
+func SplitStatements(s string) []string { //nolint:gocognit,gocyclo,funlen
 	var (
 		quoteChars  = [...]int32{'"', '\'', '`'}
 		quoteOpened int32
