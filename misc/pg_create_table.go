@@ -1,5 +1,5 @@
 // Package misc contains miscellaneous helpers.
-package misc
+package misc //nolint:revive
 
 import (
 	"database/sql"

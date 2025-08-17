@@ -68,7 +68,7 @@ func Table[V any](storage *Storage, tableName string) StorageOf[V] {
 	}
 
 	ar.Referencer = storage.MakeReferencer()
-	ar.Referencer.AddTableAlias(ar.R, tableName)
+	ar.AddTableAlias(ar.R, tableName)
 
 	return ar
 }
