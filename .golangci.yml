@@ -1,68 +1,86 @@
-# See https://github.com/golangci/golangci-lint/blob/master/.golangci.example.yml
+# See https://golangci-lint.run/docs/linters/configuration/
+version: "2"
 run:
   tests: true
-
-linters-settings:
-  errcheck:
-    check-type-assertions: true
-    check-blank: true
-  gocyclo:
-    min-complexity: 20
-  dupl:
-    threshold: 100
-  misspell:
-    locale: US
-  unparam:
-    check-exported: true
-
 linters:
-  enable-all: true
+  default: all
   disable:
-    - err113
-    - cyclop
-    - musttag
-    - intrange
+    - wsl_v5
+    - noctx
+    - funcorder
+    - embeddedstructfieldcheck
+    - noinlineerr
     - copyloopvar
-    - lll
-    - gochecknoglobals
-    - wrapcheck
-    - paralleltest
+    - cyclop
+    - depguard
+    - dupword
+    - err113
+    - errname
+    - exhaustruct
     - forbidigo
     - forcetypeassert
-    - varnamelen
-    - tagliatelle
-    - errname
+    - gochecknoglobals
+    - intrange
     - ireturn
-    - exhaustruct
-    - nonamedreturns
-    - testableexamples
-    - dupword
-    - depguard
-    - tagalign
+    - lll
     - mnd
-    - testifylint
+    - musttag
+    - nonamedreturns
+    - paralleltest
     - recvcheck
-
-issues:
-  exclude-use-default: false
-  exclude-rules:
-    - linters:
-        - wsl
-        - wastedassign
-        - ineffassign
-        - mnd
-        - goconst
-        - noctx
-        - funlen
-        - dupl
-        - unused
-        - unparam
-      path: "_test.go"
-    - linters:
-        - errcheck # Error checking omitted for brevity.
-        - gosec
-      path: "example_"
-    - linters:
-        - revive
-      text: "unused-parameter: parameter"
-
+    - tagalign
+    - tagliatelle
+    - testableexamples
+    - testifylint
+    - varnamelen
+    - wrapcheck
+  settings:
+    dupl:
+      threshold: 100
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+    gocyclo:
+      min-complexity: 20
+    misspell:
+      locale: US
+    unparam:
+      check-exported: true
+  exclusions:
+    generated: lax
+    rules:
+      - linters:
+          - dupl
+          - funlen
+          - goconst
+          - ineffassign
+          - mnd
+          - noctx
+          - unparam
+          - unused
+          - wastedassign
+          - wsl
+        path: _test.go
+      - linters:
+          - errcheck
+          - gosec
+        path: example_
+      - linters:
+          - revive
+        text: 'unused-parameter: parameter'
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - gofumpt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
